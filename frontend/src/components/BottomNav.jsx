@@ -83,18 +83,18 @@ export default function BottomNav() {
     <nav
       ref={wrapRef}
       aria-label="Primary"
-      className="fixed left-1/2 z-30 -translate-x-1/2 w-[92%] max-w-md"
+      className="fixed left-1/2 z-30 -translate-x-1/2 w-[92%] max-w-md backdrop-blur-lg" // Added backdrop-blur
       style={{ bottom: `calc(env(safe-area-inset-bottom) + 14px)` }}
     >
       <div className="relative select-none">
         {/* Morphing cream bar with concave notch */}
         <svg width="100%" height={BAR_H + R} viewBox={`0 0 ${w} ${BAR_H + R}`} className="drop-shadow-xl">
-          <defs>
-            {/* Soft gradient to match app */}
-            <linearGradient id="mm-cream-grad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFF4E6" />
-              <stop offset="100%" stopColor="#FCEAD8" />
-            </linearGradient>
+        <defs>
+          {/* New dark gradient for the glass effect */}
+          <linearGradient id="mm-dark-glass-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#2D2A43" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#1C1A2E" stopOpacity="0.5" />
+          </linearGradient>
 
             {/* Mask: show bar, hide the notch circle */}
             <mask id="mm-notch-mask">
@@ -111,18 +111,18 @@ export default function BottomNav() {
           </defs>
 
           <g filter="url(#mm-soft)">
-            <rect
-              x="0"
-              y={R}
-              width={w}
-              height={BAR_H}
-              rx={ROUNDED}
-              ry={ROUNDED}
-              fill="url(#mm-cream-grad)"
-              stroke="#F2DCCA"
-              strokeWidth="1"
-              mask="url(#mm-notch-mask)"
-            />
+          <rect
+            x="0"
+            y={R}
+            width={w}
+            height={BAR_H}
+            rx={ROUNDED}
+            ry={ROUNDED}
+            fill="url(#mm-dark-glass-grad)" // Use the new dark gradient
+            stroke="rgba(255, 255, 255, 0.15)" // A subtle, light border for the glass edge
+            strokeWidth="1"
+            mask="url(#mm-notch-mask)"
+          />
           </g>
         </svg>
 
@@ -138,12 +138,12 @@ export default function BottomNav() {
           }}
         >
           <div
-            className="rounded-full flex items-center justify-center shadow-lg ring-4 ring-black/10"
+            className="rounded-full flex items-center justify-center shadow-lg ring-2 ring-white/10" // Softer ring
             style={{
               width: "100%",
               height: "100%",
-              background:
-                "radial-gradient(120% 120% at 30% 30%, #ff8aa6 0%, #ef476f 45%, #c81e45 100%)",
+              // New gradient to match your app's vibrant pink/purple accents
+              background: "linear-gradient(to top right, #a259c3, #e94c89)",
             }}
             aria-hidden
           >
@@ -167,8 +167,11 @@ export default function BottomNav() {
                   <Icon
                     size={22}
                     className={`transition-opacity duration-200 ${
-                      isActive ? "opacity-0" : "opacity-100 text-rose-900/70"
-                    }`}
+                    isActive
+                      ? "opacity-0"
+                      // A lighter, more neutral color for inactive icons on a dark background
+                      : "opacity-100 text-gray-400 hover:text-gray-200"
+                  }`}
                   />
                   <span className="sr-only">{label}</span>
                 </Link>
