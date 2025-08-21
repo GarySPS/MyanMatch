@@ -719,14 +719,29 @@ export default function HomePage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
-  const currentUser = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-  const myId = currentUser?.user_id || currentUser?.id || null;
+// AFTER
+const currentUser = (() => {
+  try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
+  catch { return {}; }
+})();
+
+// accept only a UUID‑like id (prevents sending user_id=eq.)
+const myId = (() => {
+  const c = currentUser || {};
+  const id = c.user_id || c.id || "";
+  return typeof id === "string" && /^[0-9a-f-]{20,}$/i.test(id) ? id : null;
+})();
 
   useEffect(() => {
     async function fetchProfiles() {
       setLoading(true);
 
-      if (!myId) { setProfiles([]); setLoading(false); return; }
+if (!myId) {
+  console.warn("HomePage: no valid myId in localStorage; skipping profile fetch.");
+  setProfiles([]);
+  setLoading(false);
+  return;
+}
 
 // Load my plan + age + coords (for distance) + my preferences
 const { data: me } = await supabase
