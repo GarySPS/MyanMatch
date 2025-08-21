@@ -1,15 +1,11 @@
+// src/components/BottomNav.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Heart, MessageCircle, User, Star, Store } from "lucide-react";
 
-/** Visual constants */
-const BAR_H = 56;      // bar height
-const R = 26;          // notch radius
-const CIRCLE = 46;     // active red circle diameter
-const ROUNDED = 16;    // bar corner radius
-
-/** Smarter matching so sections stay active on sub-routes */
-const NAV = [
+// Navigation items configuration
+// This structure is great, no changes needed here.
+const NAV_ITEMS = [
   {
     to: "/HomePage",
     label: "Home",
@@ -54,135 +50,87 @@ const NAV = [
 
 export default function BottomNav() {
   const { pathname } = useLocation();
+  const navRef = useRef(null);
+  const [navWidth, setNavWidth] = useState(0);
 
-  // Which item is active?
-  const activeIndex = Math.max(
-    0,
-    NAV.findIndex((n) => (n.match ? n.match(pathname) : n.to === pathname))
-  );
+  // 1. Find the active navigation item
+  const activeIndex = useMemo(() => 
+    Math.max(
+      0,
+      NAV_ITEMS.findIndex((n) => (n.match ? n.match(pathname) : n.to === pathname))
+    ), [pathname]);
 
-  // measure width for the morphing SVG
-  const wrapRef = useRef(null);
-  const [w, setW] = useState(360);
+  // 2. Measure the width of the nav bar for precise animation
   useEffect(() => {
-    const el = wrapRef.current;
+    const el = navRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setW(el.clientWidth || 360));
-    ro.observe(el);
-    setW(el.clientWidth || 360);
-    return () => ro.disconnect();
+
+    const resizeObserver = new ResizeObserver(() => {
+      setNavWidth(el.clientWidth);
+    });
+    resizeObserver.observe(el);
+    setNavWidth(el.clientWidth); // Set initial width
+
+    return () => resizeObserver.disconnect();
   }, []);
 
-  // notch center x for active item
-  const cx = useMemo(() => {
-    const seg = w / NAV.length;
-    return seg * activeIndex + seg / 2;
-  }, [w, activeIndex]);
+  // 3. Calculate the position for the sliding "active pill"
+  const itemWidth = navWidth / NAV_ITEMS.length;
+  const pillOffset = useMemo(() => activeIndex * itemWidth, [activeIndex, itemWidth]);
 
   return (
-    <nav
-      ref={wrapRef}
-      aria-label="Primary"
-      className="fixed left-1/2 z-30 -translate-x-1/2 w-[92%] max-w-md"
-      style={{ bottom: `calc(env(safe-area-inset-bottom) + 14px)` }}
+    <div 
+      className="fixed left-1/2 -translate-x-1/2 w-[95%] max-w-md px-2"
+      style={{ bottom: `calc(env(safe-area-inset-bottom) + 10px)` }}
     >
-      <div className="relative select-none">
-        {/* Morphing cream bar with concave notch */}
-        <svg width="100%" height={BAR_H + R} viewBox={`0 0 ${w} ${BAR_H + R}`} className="drop-shadow-xl">
-          <defs>
-            {/* Soft gradient to match app */}
-            <linearGradient id="mm-cream-grad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFF4E6" />
-              <stop offset="100%" stopColor="#FCEAD8" />
-            </linearGradient>
-
-            {/* Mask: show bar, hide the notch circle */}
-            <mask id="mm-notch-mask">
-              <rect x="0" y={R} width={w} height={BAR_H} rx={ROUNDED} ry={ROUNDED} fill="white" />
-              <g style={{ transition: "transform 260ms ease" }} transform={`translate(${cx}, 0)`}>
-                <circle cx="0" cy={R + 6} r={R} fill="black" />
-              </g>
-            </mask>
-
-            {/* Depth */}
-            <filter id="mm-soft" x="-20%" y="-40%" width="140%" height="200%">
-              <feDropShadow dx="0" dy="6" stdDeviation="8" floodOpacity="0.16" />
-            </filter>
-          </defs>
-
-          <g filter="url(#mm-soft)">
-            <rect
-              x="0"
-              y={R}
-              width={w}
-              height={BAR_H}
-              rx={ROUNDED}
-              ry={ROUNDED}
-              fill="url(#mm-cream-grad)"
-              stroke="#F2DCCA"
-              strokeWidth="1"
-              mask="url(#mm-notch-mask)"
-            />
-          </g>
-        </svg>
-
-        {/* Active floating chip (inside the notch) */}
-        <div
-          className="absolute will-change-transform"
-          style={{
-            left: cx - CIRCLE / 2,
-            top: R + 6 - CIRCLE / 2,
-            width: CIRCLE,
-            height: CIRCLE,
-            transition: "left 260ms ease, top 260ms ease",
-          }}
-        >
-          <div
-            className="rounded-full flex items-center justify-center shadow-lg ring-4 ring-black/10"
+      <nav
+        ref={navRef}
+        aria-label="Primary"
+        className="relative flex items-center h-[64px] p-1.5
+                   bg-gray-900/60 backdrop-blur-xl 
+                   border border-white/10 rounded-full shadow-2xl shadow-black/40"
+      >
+        {/* Sliding "Pill" for Active State */}
+        {navWidth > 0 && (
+           <div
+            className="absolute top-1.5 left-0 h-[52px] rounded-full
+                       bg-gradient-to-br from-pink-500 via-red-500 to-rose-600
+                       transition-transform duration-300 ease-in-out"
             style={{
-              width: "100%",
-              height: "100%",
-              background:
-                "radial-gradient(120% 120% at 30% 30%, #ff8aa6 0%, #ef476f 45%, #c81e45 100%)",
+              width: `${itemWidth}px`,
+              transform: `translateX(${pillOffset}px)`,
             }}
-            aria-hidden
-          >
-            <ActiveIcon index={activeIndex} />
-          </div>
-        </div>
+            aria-hidden="true"
+          />
+        )}
 
-        {/* Row of icons (non-active shown, active hidden under chip) */}
-        <div className="absolute inset-x-0" style={{ top: R, height: BAR_H }}>
-          <div className="flex items-center justify-between px-4 h-full">
-            {NAV.map(({ to, Icon, label }, i) => {
-              const isActive = i === activeIndex;
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={label}
-                  className="relative flex-1 flex items-center justify-center"
-                >
-                  <Icon
-                    size={22}
-                    className={`transition-opacity duration-200 ${
-                      isActive ? "opacity-0" : "opacity-100 text-rose-900/70"
-                    }`}
-                  />
-                  <span className="sr-only">{label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </nav>
+        {/* Navigation Links */}
+        {NAV_ITEMS.map(({ to, Icon, label }, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={label}
+              className="relative z-10 flex-1 flex flex-col items-center justify-center 
+                         gap-0.5 h-full rounded-full text-center
+                         transition-colors duration-300"
+            >
+              <Icon
+                size={22}
+                className={isActive ? "text-white" : "text-gray-400"}
+              />
+              <span
+                className={`text-[10px] font-semibold transition-all duration-300
+                           ${isActive ? "text-white" : "text-gray-400"}`}
+              >
+                {label}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
-}
-
-/** Active icon rendered inside the red chip */
-function ActiveIcon({ index }) {
-  const I = [Home, Star, Heart, MessageCircle, Store, User][index] || Home;
-  return <I size={20} className="text-white" />;
 }
