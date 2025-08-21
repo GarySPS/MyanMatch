@@ -83,7 +83,7 @@ export default function BottomNav() {
     <nav
       ref={wrapRef}
       aria-label="Primary"
-      className="fixed left-1/2 z-30 -translate-x-1/2 w-[92%] max-w-md backdrop-blur-lg" // Added backdrop-blur
+      className="fixed left-1/2 z-30 -translate-x-1/2 w-[92%] max-w-md" // Removed backdrop-blur-lg
       style={{ bottom: `calc(env(safe-area-inset-bottom) + 14px)` }}
     >
       <div className="relative select-none">
