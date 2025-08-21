@@ -1,59 +1,55 @@
-// backend/routes/auth.js (FULL FILE)
+// /backend/routes/auth.js  (REPLACE ENTIRE FILE)
 
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 
 /* ================= EMAIL OTP SENDER ================= */
 const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST,
-  port: process.env.MAIL_PORT,
-  secure: process.env.MAIL_SECURE === 'true',
+  port: Number(process.env.MAIL_PORT || 587),
+  secure: String(process.env.MAIL_SECURE).toLowerCase() === 'true',
   auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
 });
 
 async function sendOtpMail(email, code) {
   await transporter.sendMail({
-    from: `MyanMatch <${process.env.MAIL_FROM}>`,
+    // MAIL_FROM should already be like: "MyanMatch <myanmatchdating@gmail.com>"
+    from: process.env.MAIL_FROM,
     to: email,
     subject: 'Your MyanMatch OTP Code',
     html: `<div>
       <h2>Your OTP Code</h2>
-      <p><b>${code}</b></p>
+      <p style="font-size:20px"><b>${code}</b></p>
       <p>This code will expire in 5 minutes.</p>
     </div>`,
   });
 }
 
-/* ================= SMS OTP SENDER (Twilio by default) =================
-   You can switch provider later. Fill env:
-   TWILIO_SID, TWILIO_AUTH, TWILIO_FROM  (From number like +15005550006)
-======================================================================= */
-let smsClient = null;
-try {
-  const twilio = require('twilio');
-  smsClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
-} catch (_) {
-  console.warn('Twilio not installed. Run: npm i twilio');
-}
-
-async function sendOtpSms(phone, code) {
-  if (!smsClient) throw new Error('SMS client not configured');
-  await smsClient.messages.create({
-    to: phone,
-    from: process.env.TWILIO_FROM,
-    body: `MyanMatch verification code: ${code}`,
-  });
-}
-
-// === Twilio Verify client (use your existing env names) ===
-const twilio = require('twilio');
+/* ================= Twilio Client (SMS + Verify) =================
+   Uses your existing env names:
+   - TWILIO_ACCOUNT_SID
+   - TWILIO_AUTH_TOKEN
+   - TWILIO_FROM           (e.g. +15005550006)
+   - TWILIO_VERIFY_SID
+==================================================================*/
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN  = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_FROM        = process.env.TWILIO_FROM;
 const VERIFY_SID         = process.env.TWILIO_VERIFY_SID;
 
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
+/* Fallback SMS sender (not used for Verify endpoints) */
+async function sendOtpSms(phone, code) {
+  if (!twilioClient) throw new Error('SMS client not configured');
+  await twilioClient.messages.create({
+    to: phone,
+    from: TWILIO_FROM,
+    body: `MyanMatch verification code: ${code}`,
+  });
+}
 
 /* ================= HELPERS ================= */
 function generateOTP() {
@@ -68,7 +64,7 @@ async function generateUniqueShortId(supabase) {
       .from('users')
       .select('short_id')
       .eq('short_id', shortId)
-      .single();
+      .maybeSingle();
     exists = !!data;
     attempts++;
     if (attempts > 10) throw new Error('Unable to generate unique short_id');
@@ -76,21 +72,15 @@ async function generateUniqueShortId(supabase) {
   return shortId;
 }
 
-/** Normalize Myanmar local numbers to E.164 (+95...)
- * Accepts:
- *  - +95XXXXXXXXX  -> keep
- *  - 09XXXXXXXXX   -> +959XXXXXXXXX
- *  - 9XXXXXXXXX    -> +959XXXXXXXX
- */
+/** Normalize Myanmar local numbers to E.164 (+95...) */
 function normalizeMMPhone(input) {
   let p = String(input || '').trim().replace(/[^\d+]/g, '');
   if (!p) return '';
   if (p.startsWith('+95')) return p;
   if (p.startsWith('09')) return '+959' + p.slice(2);
-  if (p.startsWith('9')) return '+959' + p.slice(1);
-  // As a last resort, if it starts with 95 (no +)
+  if (p.startsWith('9'))  return '+959' + p.slice(1);
   if (p.startsWith('95')) return '+' + p;
-  return p; // let provider validate
+  return p;
 }
 
 /* ================= EMAIL REGISTER ================= */
@@ -102,7 +92,7 @@ router.post('/register', async (req, res) => {
     .from('users')
     .select('*')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   const otp_code = generateOTP();
   const otp_expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString();
@@ -123,7 +113,7 @@ router.post('/register', async (req, res) => {
 
   let short_id;
   try { short_id = await generateUniqueShortId(supabase); }
-  catch (err) { return res.status(500).json({ error: 'Could not generate user ID, please try again.' }); }
+  catch { return res.status(500).json({ error: 'Could not generate user ID, please try again.' }); }
 
   const { data, error } = await supabase
     .from('users')
@@ -154,17 +144,15 @@ router.post('/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'Invalid or expired OTP code.' });
   }
 
-  const isFirstVerification = !user.verified;
   const { data: updatedUser, error: updateError } = await supabase
     .from('users')
     .update({ verified: true, otp_code: null, otp_expires_at: null })
     .eq('id', user.id)
     .select()
     .single();
-
   if (updateError) return res.status(500).json({ error: "Failed to set verified.", details: updateError.message });
 
-  return res.json({ message: 'OTP verified. You may now login.', is_new_user: isFirstVerification, user: updatedUser });
+  return res.json({ message: 'OTP verified. You may now login.', is_new_user: true, user: updatedUser });
 });
 
 /* ================= EMAIL RESEND ================= */
@@ -213,12 +201,11 @@ router.post('/register-phone', async (req, res) => {
   const supabase = req.supabase;
   let { phone, password, username, channel } = req.body || {};
   phone = normalizeMMPhone(phone);
-  channel = channel === 'whatsapp' ? 'whatsapp' : 'sms'; // default is SMS
+  channel = channel === 'whatsapp' ? 'whatsapp' : 'sms';
 
   if (!phone) return res.status(400).json({ error: 'Phone is required.' });
 
-  // Find or create the user row without generating/storing a code
-  const { data: exist } = await supabase.from('users').select('*').eq('phone', phone).single();
+  const { data: exist } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
 
   if (exist && exist.phone_verified) {
     return res.status(400).json({ error: 'Phone already registered' });
@@ -258,11 +245,10 @@ router.post('/register-phone', async (req, res) => {
     userRow = data;
   }
 
-  // Ask Twilio Verify to send the code
   try {
     await twilioClient.verify.v2.services(VERIFY_SID).verifications.create({
       to: phone,
-      channel, // 'sms' or 'whatsapp'
+      channel,
     });
     return res.json({ user: userRow, message: `OTP sent via ${channel}.` });
   } catch (e) {
@@ -275,10 +261,8 @@ router.post('/verify-otp-phone', async (req, res) => {
   const supabase = req.supabase;
   let { phone, otp_code } = req.body || {};
   phone = normalizeMMPhone(phone);
-
   if (!phone || !otp_code) return res.status(400).json({ error: 'Phone and code are required.' });
 
-  // Let Twilio Verify confirm the code
   let check;
   try {
     check = await twilioClient.verify.v2.services(VERIFY_SID).verificationChecks.create({
@@ -291,9 +275,8 @@ router.post('/verify-otp-phone', async (req, res) => {
 
   if (check.status !== 'approved') {
     return res.status(400).json({ error: 'Invalid or expired OTP code.' });
-    }
+  }
 
-  // Mark user as verified in your DB
   const { data: user, error } = await supabase.from('users').select('*').eq('phone', phone).single();
   if (error || !user) return res.status(404).json({ error: 'User not found.' });
 
@@ -303,7 +286,6 @@ router.post('/verify-otp-phone', async (req, res) => {
     .eq('id', user.id)
     .select()
     .single();
-
   if (updateError) return res.status(500).json({ error: 'Failed to set phone verified.' });
 
   return res.json({ message: 'Phone verified. You may now login.', is_new_user: !user.phone_verified, user: updatedUser });
@@ -314,20 +296,15 @@ router.post('/resend-otp-phone', async (req, res) => {
   let { phone, channel } = req.body || {};
   phone = normalizeMMPhone(phone);
   channel = channel === 'whatsapp' ? 'whatsapp' : 'sms';
-
   if (!phone) return res.status(400).json({ error: 'Phone is required.' });
 
   try {
-    await twilioClient.verify.v2.services(VERIFY_SID).verifications.create({
-      to: phone,
-      channel,
-    });
+    await twilioClient.verify.v2.services(VERIFY_SID).verifications.create({ to: phone, channel });
     return res.json({ message: `OTP resent via ${channel}.` });
   } catch (e) {
     return res.status(500).json({ error: `Failed to resend ${channel} OTP: ${e?.message || e}` });
   }
 });
-
 
 /* ----- Login with phone ----- */
 router.post('/login-phone', async (req, res) => {
@@ -348,7 +325,7 @@ router.post('/login-phone', async (req, res) => {
   res.json({ user });
 });
 
-/* ================= FORGOT PASSWORD (EMAIL) — unchanged ================= */
+/* ================= FORGOT PASSWORD (EMAIL) ================= */
 router.post('/forgot-password/send-otp', async (req, res) => {
   const supabase = req.supabase;
   let { email } = req.body || {};
@@ -364,7 +341,7 @@ router.post('/forgot-password/send-otp', async (req, res) => {
   if (updErr) return res.status(500).json({ error: 'Could not generate OTP.' });
 
   try { await sendOtpMail(email, otp_code); }
-  catch (e) { return res.status(500).json({ error: 'Failed to send email. Try again.' }); }
+  catch { return res.status(500).json({ error: 'Failed to send email. Try again.' }); }
 
   res.json({ message: 'OTP sent to email.' });
 });
