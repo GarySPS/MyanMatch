@@ -2,6 +2,31 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+/* --- Pretty toast for notices --- */
+function MMToast({ open, type = "error", text = "", onClose }) {
+  if (!open) return null;
+  const isErr = type === "error";
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[80]
+                 bottom-[calc(env(safe-area-inset-bottom)+110px)]"
+      role="status"
+      aria-live="polite"
+      onClick={onClose}
+    >
+      <div
+        className={`px-4 py-3 rounded-2xl shadow-2xl border
+                    ${isErr
+                      ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
+                      : "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white border-white/20"
+                    }`}
+      >
+        <div className="font-semibold text-sm">{text}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function SignInPage() {
   const [mode, setMode] = useState("email"); // 'email' | 'phone'
   const [email, setEmail] = useState("");
@@ -10,6 +35,31 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
+
+    // toast
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastType, setToastType] = useState("error"); // 'error' | 'success'
+  const [toastText, setToastText] = useState("");
+
+  function showToast(text, type = "error") {
+    setToastText(text);
+    setToastType(type);
+    setToastOpen(true);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
+  }
+
+  // map backend errors -> friendly MM messages
+  function normalizeLoginError(msg = "") {
+    const s = String(msg).toLowerCase();
+    if (s.includes("not found") || s.includes("no account") || s.includes("doesn") || s.includes("unknown user"))
+      return "ဒီ Gmail/ဖုန်းနံပါတ်နဲ့ အကောင့် မရှိပါ။";
+    if (s.includes("password") || s.includes("credential") || s.includes("incorrect") || s.includes("mismatch"))
+      return "စကားဝှက် မမှန်ပါ။";
+    if (s.includes("verify")) return "အကောင့်အတည်ပြုခြင်း လိုအပ်ပါတယ်။";
+    return msg || "ဝင်ရောက်မှု မအောင်မြင်ပါ။ ထပ်ကြိုးစားပါ။";
+  }
+
 
   const postLoginMergeAndRoute = async (dataUser) => {
     const userId = dataUser.id || dataUser.user_id;
@@ -60,26 +110,28 @@ export default function SignInPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setLoading(false);
 
       if (!res.ok) {
-        setErrorMsg(data.error || "Invalid credentials.");
-        // If not verified, push to verify page with channel
-        if (
-          data.error &&
-          (data.error.includes("verify your gmail") || data.error.includes("verify your phone"))
-        ) {
+        const nice = normalizeLoginError(data.error || "");
+        setErrorMsg(nice);
+        showToast(nice, "error");
+
+        // if needs verification -> route to verify page
+        if (String(data.error || "").toLowerCase().includes("verify")) {
           if (mode === "email") navigate("/VerifyCodePage", { state: { email, channel: "email" } });
           else navigate("/VerifyCodePage", { state: { phone, channel: "phone" } });
         }
         return;
       }
 
+      showToast("Welcome back!", "success");
       await postLoginMergeAndRoute(data.user);
     } catch (err) {
       setLoading(false);
       setErrorMsg("Network error. Please try again.");
+      showToast("Network error. Please try again.", "error");
     }
   };
 
@@ -93,9 +145,13 @@ export default function SignInPage() {
     >
       <div className="absolute inset-0 bg-black/40 z-0" />
       <div className="relative z-10 w-full max-w-sm mx-auto rounded-3xl bg-white/90 px-7 py-10 flex flex-col items-center shadow-2xl">
-        <h2 className="text-2xl font-bold text-[#893086] mb-2 text-center">
-          Sign in to MyanMatch
-        </h2>
+<h2 className="text-2xl font-extrabold text-[#893086] text-center">
+  Sign in to MyanMatch
+</h2>
+<p className="text-base font-medium text-gray-700 mb-3 text-center">
+  အကောင့်ဝင်မည်
+</p>
+
 
         {/* Toggle Email / Phone */}
         <div className="flex w-full mb-5 rounded-xl overflow-hidden border border-gray-200">
@@ -149,7 +205,7 @@ export default function SignInPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button
+          <button type="submit"
             className="w-full py-3 rounded-full bg-[#893086] text-white text-lg font-semibold mb-2 transition hover:bg-[#a16bbf] shadow-md"
             disabled={loading}
           >
@@ -165,7 +221,7 @@ export default function SignInPage() {
             onClick={() => navigate("/ForgotPasswordPage")}
             className="text-sm text-[#893086] font-medium underline cursor-pointer hover:text-[#a16bbf]"
           >
-            Forgot password?မေ့သွားပြီ
+            Forgot password? မေ့သွားပြီ
           </span>
         </div>
         <div className="mt-2 text-center text-base">
@@ -177,6 +233,14 @@ export default function SignInPage() {
             Create account
           </span>
         </div>
+
+              <MMToast
+        open={toastOpen}
+        type={toastType}
+        text={toastText}
+        onClose={() => setToastOpen(false)}
+      />
+
       </div>
     </div>
   );

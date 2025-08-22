@@ -882,8 +882,10 @@ const STRINGS = {
 
     "profile": {
       "about": "About"
-    }
+    },
 
+    "nav.support": "Customer Support",
+    "nav.download": "Download",
 
   },
   my: {
@@ -1733,17 +1735,17 @@ const STRINGS = {
     // ⬇️ add these siblings after the "edit" block inside STRINGS.my
     "download": {
       "title": "MyanMatch ကို ဒေါင်းလုဒ်ဆွဲပါ",
-      "android": "အန်ဒရိုက်",
-      "androidDesc": "အကောင်းဆုံးအသုံးပြုရန် Home Screen မှာ အက်ပ်ကိုထည့်သုံးပါ။",
-      "installAndroid": "Android ပေါ်တွင် တပ်ဆင်မည်",
-      "already": "ပြီးသား တပ်ဆင်ထားပြီးပါပြီ",
-      "androidTip": "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။",
+      "android": "Android",
+      "androidDesc": "အကောင်းဆုံးအသုံးပြုရန် Home Screen မှာ app ကိုထည့်သုံးပါ။",
+      "installAndroid": "Android ပေါ်တွင် install တင်မည်",
+      "already": "Install ထားပြီးပါပြီ",
+      "androidTip": "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ အပေါ်ဒေါင့် အစက်၃စက် menu ထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။",
       "ios": "iOS (iPhone)",
-      "iosDesc": "Safari တွင် “Add to Home Screen” ဖြင့်တပ်ဆင်ပါ။",
+      "iosDesc": "Safari တွင် “Add to Home Screen” ဖြင့် install ပါ။",
       "iosStep1": "၁) Safari တွင် Share ခလုတ်ကိုနှိပ်ပါ။",
       "iosStep2": "၂) “Add to Home Screen” ကိုရွေးပါ။",
       "iosStep3": "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
-      "iosNote": "မှတ်ချက် — iOS တွင် PWA ကို Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
+      "iosNote": "မှတ်ချက် — iOS တွင် Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
     },
     "profile": {
       "about": "အကြောင်းအရာ"
@@ -1759,8 +1761,9 @@ const STRINGS = {
       "share": "Safari တွင် Share ခလုတ်ကို နှိပ်ပါ",
       "addToHome": "Add to Home Screen ကို ရွေးပါ",
       "confirmAdd": "Add ကိုနှိပ်ပြီး အတည်ပြုပါ"
-    }
-
+    },
+    "nav.support": "ဖောက်သည် ဝန်ဆောင်မှု",
+    "nav.download": "ဒေါင်းလုဒ်",
   }
 };
 

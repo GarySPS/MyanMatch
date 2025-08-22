@@ -270,7 +270,6 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
               setShowBoostModal(true);
             }}
           />
-    //navdiver
 
           {/* ✅ Customer Support row added here */}
           <NavRow

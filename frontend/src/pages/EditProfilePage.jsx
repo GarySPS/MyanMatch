@@ -426,6 +426,32 @@ function computeAge(iso) {
   return a;
 }
 
+/* --- Pretty toast for notices --- */
+function MMToast({ open, type = "success", text = "", onClose }) {
+  if (!open) return null;
+  const isErr = type === "error";
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[90]
+                 bottom-[calc(env(safe-area-inset-bottom)+110px)]"
+      role="status"
+      aria-live="polite"
+      onClick={onClose}
+    >
+      <div
+        className={`px-4 py-3 rounded-2xl shadow-2xl border
+                    ${isErr
+                      ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
+                      : "bg-gradient-to-tr from-pink-500 to-[#a259c3] text-white border-white/20"
+                    }`}
+      >
+        <div className="font-semibold text-sm">{text}</div>
+      </div>
+    </div>
+  );
+}
+
+
 /** ---------- Main ---------- */
 export default function EditProfilePage() {
   const { t } = useI18n()
@@ -583,6 +609,20 @@ const VOICE_PROMPTS = useMemo(
   const rafRef = useRef(null);
   const [level, setLevel] = useState(0);
 
+    // toast
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastType, setToastType] = useState("success"); // 'success' | 'error'
+  const [toastText, setToastText] = useState("");
+
+  function showToast(text, type = "success") {
+    setToastText(text);
+    setToastType(type);
+    setToastOpen(true);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
+  }
+
+
   function pickMimeType() {
     const candidates = [
       "audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus","audio/ogg",
@@ -696,7 +736,7 @@ const VOICE_PROMPTS = useMemo(
     u.lang = "en-US";
     window.speechSynthesis.speak(u);
   } else {
-    alert(sample);
+    showToast(sample, "success");
   }
 }
 
@@ -737,10 +777,10 @@ setVoiceMeta({
   prompt_key: voicePromptKey || "",  // explicit key
 });
 
-    alert(t("edit.voice.toast.uploaded"))
+    showToast(t("edit.voice.toast.uploaded"), "success")
   } catch (e) {
     console.error(e);
-    alert(t("edit.voice.toast.fail"))
+    showToast(t("edit.voice.toast.fail"), "error")
   }
 }
 
@@ -901,44 +941,46 @@ try {
     if (!userId) return;
     setSaving(true);
 
-    // 1) Upload any new files and produce final URL list
-    const uploaded = [];
-    for (let i = 0; i < photos.length; i++) {
-      const slot = photos[i];
-      if (!slot) { uploaded[i] = null; continue; }
+// 1) Upload any new files and produce final URL list
+const uploaded = [];
+const nextPhotos = [...photos]; // clone, don't mutate state directly
 
-      if (slot.file) {
-        // delete previous file for this slot first
-        if (slot.path) {
-          try {
-            await supabase.storage.from("media").remove([slot.path]);
-          } catch (e) {
-            console.warn("Could not remove previous file:", slot.path, e);
-          }
-        }
+for (let i = 0; i < nextPhotos.length; i++) {
+  const slot = nextPhotos[i];
+  if (!slot) { uploaded[i] = null; continue; }
 
-        const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${userId}/media/${Date.now()}_${i}.${ext}`;
-
-        const { error: upErr } = await supabase
-          .storage
-          .from("media")
-          .upload(path, slot.file, { upsert: true });
-
-        if (upErr) {
-          console.error("upload error", upErr);
-          alert(t("edit.toast.photoFail"));
-          setSaving(false);
-          return;
-        }
-
-        const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
-        uploaded[i] = pub.publicUrl;
-        photos[i] = { url: pub.publicUrl, path }; // keep new path for future edits
-      } else {
-        uploaded[i] = slot.url || null;
+  if (slot.file) {
+    // delete previous file for this slot first
+    if (slot.path) {
+      try {
+        await supabase.storage.from("media").remove([slot.path]);
+      } catch (e) {
+        console.warn("Could not remove previous file:", slot.path, e);
       }
     }
+
+    const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${userId}/media/${Date.now()}_${i}.${ext}`;
+
+    const { error: upErr } = await supabase
+      .storage
+      .from("media")
+      .upload(path, slot.file, { upsert: true });
+
+    if (upErr) {
+      console.error("upload error", upErr);
+      showToast(t("edit.toast.photoFail"), "error");
+      setSaving(false);
+      return;
+    }
+
+    const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
+    uploaded[i] = pub.publicUrl;
+    nextPhotos[i] = { url: pub.publicUrl, path }; // update the clone
+  } else {
+    uploaded[i] = slot.url || null;
+  }
+}
 
     // 2) Delete any paths collected by the trash button (removePhoto)
     if (deletedPathsRef.current.length) {
@@ -952,7 +994,8 @@ try {
     }
 
     const media = uploaded.filter(Boolean);
-    const media_paths = photos.map(s => s?.path).filter(Boolean);
+    const media_paths = nextPhotos.map(s => s?.path).filter(Boolean);
+    setPhotos(nextPhotos); // commit updated photos back to state
 
     // 3) Build payload and save
     const ethnicityText =
@@ -1013,9 +1056,9 @@ updated_at: new Date().toISOString(),
       console.error("Save error:", {
         message: error.message, details: error.details, hint: error.hint, code: error.code
       });
-      alert(t("edit.toast.saveFail"));
+      showToast(t("edit.toast.saveFail"), "error");
     } else {
-      alert(t("edit.toast.saveOk"));
+      showToast(t("edit.toast.saveOk"), "success");
     }
   };
 
@@ -1372,6 +1415,13 @@ return (
     {saving ? t("edit.saving") : t("edit.saveProfile")}
   </button>
 </div>
+      <MMToast
+        open={toastOpen}
+        type={toastType}
+        text={toastText}
+        onClose={() => setToastOpen(false)}
+      />
+
       </div>
        </main>
     </div>

@@ -70,9 +70,12 @@ export default function SignUpPage() {
     >
       <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
       <div className="relative z-10 w-full max-w-sm mx-auto rounded-3xl bg-white/90 px-7 py-10 flex flex-col items-center shadow-2xl">
-        <h2 className="text-2xl font-bold text-[#893086] mb-2 text-center">
-          Create your account
-        </h2>
+<h2 className="text-2xl font-bold text-[#893086] text-center">
+  Create your account
+</h2>
+<p className="text-base font-medium text-gray-700 mb-4 text-center">
+  အကောင့်အသစ်ဖောက်မည်
+</p>
 
         {/* Toggle: Email / Phone */}
         <div className="flex w-full mb-5 rounded-xl overflow-hidden border border-gray-200">

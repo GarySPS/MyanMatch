@@ -23,8 +23,7 @@ export default function Layout({ children }) {
   className="min-h-dvh flex flex-col relative overflow-hidden"
   style={
     fullBleed
-      ? {} // HomePage paints its own background
-      : { background: `url('/images/myanmatch-bg.jpg') center center / cover no-repeat, #82142d` }
+? {} // HomePage, Profile, and UserProfilePage paint their own background+      : { background: `url('/images/myanmatch-bg.jpg') center center / cover no-repeat, #82142d` }
   }
 >
       {/* Soft dark overlay for readability */}
