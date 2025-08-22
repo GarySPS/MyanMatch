@@ -885,7 +885,6 @@ const STRINGS = {
     },
 
     "nav.support": "Customer Support",
-    "nav.download": "Download",
 
   },
   my: {
@@ -1763,7 +1762,6 @@ const STRINGS = {
       "confirmAdd": "Add ကိုနှိပ်ပြီး အတည်ပြုပါ"
     },
     "nav.support": "ဖောက်သည် ဝန်ဆောင်မှု",
-    "nav.download": "ဒေါင်းလုဒ်",
   }
 };
 
