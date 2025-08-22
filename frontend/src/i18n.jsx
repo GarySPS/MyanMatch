@@ -848,23 +848,39 @@ const STRINGS = {
       "saveOk": "Profile updated!"
     },
 
-download: {
-  title: "Download MyanMatch",
-  android: "Android",
-  androidDesc: "Install the app to your home screen for the best experience.",
-  installAndroid: "Install on Android",
-  already: "Already installed",
-  androidTip: "Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap “Install app” or “Add to Home screen”.",
-  ios: "iOS (iPhone)",
-  iosDesc: "Install from Safari using “Add to Home Screen”.",
-  iosStep1: "1) In Safari, tap the Share button.",
-  iosStep2: "2) Choose Add to Home Screen.",
-  iosStep3: "3) Tap Add to finish.",
-  iosNote: "Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser."
-},
-profile: {
-  about: "About"
-},
+    "msg": {
+      "alreadyInstalled": "✅ Already installed on this device.",
+      "noPrompt":
+        "If nothing happens, please open in Chrome on Android or add to Home Screen from the browser menu.",
+      "installing": "📲 Installing… check your home screen.",
+      "dismissed": "You dismissed the install. You can try again anytime.",
+      "failed": "Install failed. Please try again."
+    },
+
+    "alt": {
+      "share": "Tap the Share button in Safari",
+      "addToHome": "Choose Add to Home Screen",
+      "confirmAdd": "Confirm Add"
+    },
+
+    "download": {
+      "title": "Download MyanMatch",
+      "android": "Android",
+      "androidDesc": "Install the app to your home screen for the best experience.",
+      "installAndroid": "Install on Android",
+      "already": "Already installed",
+      "androidTip": "Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap “Install app” or “Add to Home screen”.",
+      "ios": "iOS (iPhone)",
+      "iosDesc": "Install from Safari using “Add to Home Screen”.",
+      "iosStep1": "1) In Safari, tap the Share button.",
+      "iosStep2": "2) Choose Add to Home Screen.",
+      "iosStep3": "3) Tap Add to finish.",
+      "iosNote": "Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser."
+    },
+
+    "profile": {
+      "about": "About"
+    },
 
   }
 
@@ -1712,26 +1728,37 @@ profile: {
       "saveOk": "ပရိုဖိုင်းကို သိမ်းပြီးပါပြီ!"
     },
 
-download: {
-  title: "MyanMatch ကို ဒေါင်းလုဒ်ဆွဲပါ",
-  android: "အန်ဒရိုက်",
-  androidDesc: "အကောင်းဆုံးအသုံးပြုရန် Home Screen မှာ အက်ပ်ကိုထည့်သုံးပါ။",
-  installAndroid: "Android ပေါ်တွင် တပ်ဆင်မည်",
-  already: "ပြီးသား တပ်ဆင်ထားပြီးပါပြီ",
-  androidTip: "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။",
-  ios: "iOS (iPhone)",
-  iosDesc: "Safari တွင် “Add to Home Screen” ဖြင့်တပ်ဆင်ပါ။",
-  iosStep1: "၁) Safari တွင် Share ခလုတ်ကိုနှိပ်ပါ။",
-  iosStep2: "၂) “Add to Home Screen” ကိုရွေးပါ။",
-  iosStep3: "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
-  iosNote: "မှတ်ချက် — iOS တွင် PWA ကို Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
-},
-profile: {
-  about: "အကြောင်းအရာ"
-},
+    // ⬇️ add these siblings after the "edit" block inside STRINGS.my
+    "download": {
+      "title": "MyanMatch ကို ဒေါင်းလုဒ်ဆွဲပါ",
+      "android": "အန်ဒရိုက်",
+      "androidDesc": "အကောင်းဆုံးအသုံးပြုရန် Home Screen မှာ အက်ပ်ကိုထည့်သုံးပါ။",
+      "installAndroid": "Android ပေါ်တွင် တပ်ဆင်မည်",
+      "already": "ပြီးသား တပ်ဆင်ထားပြီးပါပြီ",
+      "androidTip": "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။",
+      "ios": "iOS (iPhone)",
+      "iosDesc": "Safari တွင် “Add to Home Screen” ဖြင့်တပ်ဆင်ပါ။",
+      "iosStep1": "၁) Safari တွင် Share ခလုတ်ကိုနှိပ်ပါ။",
+      "iosStep2": "၂) “Add to Home Screen” ကိုရွေးပါ။",
+      "iosStep3": "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
+      "iosNote": "မှတ်ချက် — iOS တွင် PWA ကို Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
+    },
+    "profile": {
+      "about": "အကြောင်းအရာ"
+    },
+    "msg": {
+      "alreadyInstalled": "✅ ဤစက်တွင် အက်ပ်တပ်ဆင်ပြီးသား ဖြစ်ပါသည်။",
+      "noPrompt": "ဘာမှ မဖြစ်လျှင် Android တွင် Chrome ဖြင့်ဖွင့်ပါ သို့မဟုတ် browser မီနူးမှ Home Screen သို့ ထည့်ရန်/Install app ကိုနှိပ်ပါ။",
+      "installing": "📲 တပ်ဆင်နေပါပြီ… Home Screen ကို စစ်ဆေးပါ။",
+      "dismissed": "တပ်ဆင်ခြင်းကို ပယ်ချခဲ့ပါတယ်။ မည်သည့်အချိန်မဆို နောက်တစ်ခါ ပြန်ကြိုးစားနိုင်ပါတယ်။",
+      "failed": "တပ်ဆင်မှု မအောင်မြင်ပါ။ ထပ်ကြိုးစားပါ။"
+    },
+    "alt": {
+      "share": "Safari တွင် Share ခလုတ်ကို နှိပ်ပါ",
+      "addToHome": "Add to Home Screen ကို ရွေးပါ",
+      "confirmAdd": "Add ကိုနှိပ်ပြီး အတည်ပြုပါ"
+    }
 
-
-  }
   },
 };
 

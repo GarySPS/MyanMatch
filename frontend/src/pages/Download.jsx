@@ -37,26 +37,24 @@ export default function DownloadPage() {
   async function handleAndroidInstall() {
     setMsg("");
     if (isInstalled) {
-      setMsg("✅ Already installed on this device.");
+      setMsg(t("download.msg.alreadyInstalled"));
       return;
     }
     if (!deferredPrompt) {
-      setMsg(
-        "If nothing happens, please open in Chrome on Android or add to Home Screen from the browser menu."
-      );
+      setMsg(t("download.msg.noPrompt"));
       return;
     }
     try {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
-        setMsg("📲 Installing… check your home screen.");
+        setMsg(t("download.msg.installing"));
       } else {
-        setMsg("You dismissed the install. You can try again anytime.");
+        setMsg(t("download.msg.dismissed"));
       }
       setDeferredPrompt(null);
-    } catch (e) {
-      setMsg("Install failed. Please try again.");
+    } catch {
+      setMsg(t("download.msg.failed"));
     }
   }
 
@@ -77,20 +75,24 @@ export default function DownloadPage() {
             onClick={() => navigate(-1)}
             className="px-3 py-1.5 rounded-full hover:bg-white/10"
             type="button"
+            aria-label={t("common.back")}
           >
             ←
           </button>
-          <h1 className="text-lg font-extrabold tracking-tight">{t("download.title")}</h1>
+          <h1 className="text-lg font-extrabold tracking-tight">
+            {t("download.title")}
+          </h1>
         </div>
       </header>
 
       <main className="px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+96px)] space-y-6">
-
         {/* ANDROID */}
         <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur shadow p-5">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl" aria-hidden>🤖</span>
-            <h2 className="text-xl font-extrabold">Android</h2>
+            <span className="text-2xl" aria-hidden>
+              🤖
+            </span>
+            <h2 className="text-xl font-extrabold">{t("download.android")}</h2>
           </div>
 
           <p className="text-white/80 text-sm mb-4">
@@ -105,42 +107,50 @@ export default function DownloadPage() {
             {isInstalled ? t("download.already") : t("download.installAndroid")}
           </button>
 
-          {msg && (
-            <div className="mt-3 text-xs text-white/80">
-              {msg}
-            </div>
-          )}
+          {msg && <div className="mt-3 text-xs text-white/80">{msg}</div>}
 
- <div className="mt-4 text-[12px] text-white/60">
-   {t("download.androidTip")}
- </div>
+          <div className="mt-4 text-[12px] text-white/60">
+            {t("download.androidTip")}
+          </div>
         </section>
 
         {/* IOS */}
         <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur shadow p-5">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl" aria-hidden>🍎</span>
+            <span className="text-2xl" aria-hidden>
+              🍎
+            </span>
             <h2 className="text-xl font-extrabold">{t("download.ios")}</h2>
           </div>
 
-          <p className="text-white/80 text-sm mb-4">
-            {t("download.iosDesc")}
-          </p>
+          <p className="text-white/80 text-sm mb-4">{t("download.iosDesc")}</p>
 
-<ol className="space-y-4">
-  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-    <img src="/assets/ios-step1.png" alt="Tap the Share button in Safari" className="w-full object-cover" />
-    <div className="p-3 text-sm">{t("download.iosStep1")}</div>
-  </li>
-  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-    <img src="/assets/ios-step2.png" alt="Choose Add to Home Screen" className="w-full object-cover" />
-    <div className="p-3 text-sm">{t("download.iosStep2")}</div>
-  </li>
-  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-    <img src="/assets/ios-step3.png" alt="Confirm Add" className="w-full object-cover" />
-    <div className="p-3 text-sm">{t("download.iosStep3")}</div>
-  </li>
-</ol>
+          <ol className="space-y-4">
+            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+              <img
+                src="/assets/ios-step1.png"
+                alt={t("download.alt.share")}
+                className="w-full object-cover"
+              />
+              <div className="p-3 text-sm">{t("download.iosStep1")}</div>
+            </li>
+            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+              <img
+                src="/assets/ios-step2.png"
+                alt={t("download.alt.addToHome")}
+                className="w-full object-cover"
+              />
+              <div className="p-3 text-sm">{t("download.iosStep2")}</div>
+            </li>
+            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+              <img
+                src="/assets/ios-step3.png"
+                alt={t("download.alt.confirmAdd")}
+                className="w-full object-cover"
+              />
+              <div className="p-3 text-sm">{t("download.iosStep3")}</div>
+            </li>
+          </ol>
 
           <div className="mt-4 text-[12px] text-white/60">
             {t("download.iosNote")}
