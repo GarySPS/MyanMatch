@@ -1,6 +1,7 @@
 // src/pages/Download.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useI18n } from "../i18n";
 
 // 👉 Replace these with your own images later
 import step1 from "../assets/ios-step1.png"; // share button
@@ -9,6 +10,7 @@ import step3 from "../assets/ios-step3.png"; // confirm Add
 
 export default function DownloadPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -83,7 +85,7 @@ export default function DownloadPage() {
           >
             ←
           </button>
-          <h1 className="text-lg font-extrabold tracking-tight">Download MyanMatch</h1>
+          <h1 className="text-lg font-extrabold tracking-tight">{t("download.title")}</h1>
         </div>
       </header>
 
@@ -97,7 +99,7 @@ export default function DownloadPage() {
           </div>
 
           <p className="text-white/80 text-sm mb-4">
-            Install the app to your home screen for the best experience.
+            {t("download.androidDesc")}
           </p>
 
           <button
@@ -105,7 +107,7 @@ export default function DownloadPage() {
             type="button"
             className="w-full rounded-full px-5 py-3 text-sm font-bold bg-[#FFD84D] text-black hover:opacity-90"
           >
-            {isInstalled ? "Already installed" : "Install on Android"}
+            {isInstalled ? t("download.already") : t("download.installAndroid")}
           </button>
 
           {msg && (
@@ -114,41 +116,39 @@ export default function DownloadPage() {
             </div>
           )}
 
-          <div className="mt-4 text-[12px] text-white/60">
-            Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap
-            <span className="font-semibold"> “Install app”</span> or
-            <span className="font-semibold"> “Add to Home screen”</span>.
-          </div>
+ <div className="mt-4 text-[12px] text-white/60">
+   {t("download.androidTip")}
+ </div>
         </section>
 
         {/* IOS */}
         <section className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur shadow p-5">
           <div className="flex items-center gap-3 mb-3">
             <span className="text-2xl" aria-hidden>🍎</span>
-            <h2 className="text-xl font-extrabold">iOS (iPhone)</h2>
+            <h2 className="text-xl font-extrabold">{t("download.ios")}</h2>
           </div>
 
           <p className="text-white/80 text-sm mb-4">
-            Install from Safari using “Add to Home Screen”.
+            {t("download.iosDesc")}
           </p>
 
           <ol className="space-y-4">
             <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
               <img src={step1} alt="Tap the Share button in Safari" className="w-full object-cover" />
-              <div className="p-3 text-sm">1) In Safari, tap the <strong>Share</strong> button.</div>
+              <div className="p-3 text-sm">{t("download.iosStep1")}</div>
             </li>
             <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
               <img src={step2} alt="Choose Add to Home Screen" className="w-full object-cover" />
-              <div className="p-3 text-sm">2) Choose <strong>Add to Home Screen</strong>.</div>
+              <div className="p-3 text-sm">{t("download.iosStep2")}</div>
             </li>
             <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
               <img src={step3} alt="Confirm Add" className="w-full object-cover" />
-              <div className="p-3 text-sm">3) Tap <strong>Add</strong> to finish.</div>
+              <div className="p-3 text-sm">{t("download.iosStep3")}</div>
             </li>
           </ol>
 
           <div className="mt-4 text-[12px] text-white/60">
-            Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser.
+            {t("download.iosNote")}
           </div>
         </section>
       </main>
