@@ -651,104 +651,102 @@ const doUnmatch = async () => {
       {/* PAGE CONTENT */}
       <div className="relative z-[2] flex flex-col min-h-screen">
 
-{/* Header (FIXED TOP) */}
-<div className="fixed top-0 left-1/2 -translate-x-1/2 z-[60] w-full max-w-[480px] px-3 py-2 border-b border-white/10 bg-white/5 backdrop-blur supports-[backdrop-filter]:bg-white/10">
-  <div className="flex items-center justify-between">
+{/* --- START: UPGRADED HEADER --- */}
+<div className="fixed top-0 left-1/2 -translate-x-1/2 z-30 w-full max-w-[480px] bg-[#120f1f]/80 backdrop-blur-lg border-b border-white/10">
+  <div className="flex items-center justify-between p-3">
+    {/* Left Side: Back & Profile Info */}
     <div className="flex items-center gap-3 min-w-0">
       <button
         onClick={() => navigate(-1)}
-        className="text-white/90 p-1 -ml-1"
+        className="p-2 rounded-full hover:bg-white/10 text-white/90 transition-colors"
         aria-label="Back"
       >
-        <IoArrowBack size={22} />
+        <IoArrowBack size={24} />
       </button>
 
       {otherUser && (
         <button
-          type="button"
           onClick={() => navigate(`/profile/${otherUserId}`)}
-          className="flex items-center gap-2 min-w-0 group"
+          className="flex items-center gap-3 min-w-0 group"
           aria-label="Open profile"
         >
-<span className="font-semibold text-base truncate group-hover:underline">
-  {otherUser.first_name}
-</span>
-{otherUser.verified && <VerifiedBadge className="ml-2 scale-90" />}
+          {otherUser.avatar_url ? (
+            <img src={otherUser.avatar_url} alt={otherUser.first_name} className="w-10 h-10 rounded-full object-cover" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2a1938] to-[#0b0a12]" />
+          )}
+          <div className="flex flex-col items-start min-w-0">
+            <span className="font-bold text-lg text-white truncate group-hover:underline">
+              {otherUser.first_name}
+            </span>
+            {otherUser.verified && <VerifiedBadge />}
+          </div>
         </button>
       )}
     </div>
 
+    {/* Right Side: Actions */}
     <div className="flex items-center gap-2">
       <button
         onClick={() => setGiftOpen(true)}
-        className="px-3 py-2.5 rounded-full bg-[#FFD84D] text-black font-bold hover:opacity-90 active:scale-95 inline-flex items-center gap-2"
+        className="p-2.5 rounded-full bg-gradient-to-tr from-pink-500 to-purple-500 text-white shadow-lg shadow-pink-500/20 hover:scale-105 transition-transform"
         aria-label="Send gift"
         title="Send gift"
       >
-        <FaGift size={16} />
-        <span className="text-sm">Send Gift</span>
+        <FaGift size={18} />
       </button>
 
-<button
-  onClick={() => setUnmatchOpen(true)}
-  disabled={busyUnmatch}
-        className="px-3 py-2.5 rounded-full border border-white/30 text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-60"
+      <button
+        onClick={() => setUnmatchOpen(true)}
+        disabled={busyUnmatch}
+        className="p-2.5 rounded-full bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-60"
         aria-label="Unmatch"
         title="Unmatch"
       >
-        <IoTrash size={16} />
-        <span className="text-sm">{busyUnmatch ? "Removing…" : "Unmatch"}</span>
+        <IoTrash size={18} />
       </button>
     </div>
   </div>
 </div>
 
-{/* spacer for fixed header height */}
-<div className="h-[56px]" />
+{/* Spacer for new fixed header height */}
+<div className="h-[76px]" />
+{/* --- END: UPGRADED HEADER --- */}
 
-{/* Matched banner (COMPACT / CENTERED) */}
+{/* --- START: NEW PREMIUM MATCH CARD --- */}
 {otherUser && (
-  <div className="px-4 pt-5 pb-4">
-    <div className="mx-auto max-w-[460px] rounded-3xl bg-white/5 border border-white/10 px-5 py-5 text-center shadow-lg">
+  <div className="px-4 py-4">
+    <div className="rounded-3xl border border-white/10 bg-black/20 backdrop-blur-md p-6 flex flex-col items-center text-center shadow-lg">
       <button
         type="button"
         onClick={() => navigate(`/profile/${otherUserId}`)}
-        className="mx-auto block w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden ring-4 ring-white/60 shadow focus:outline-none focus:ring-[#FFD84D]"
+        className="relative block"
         aria-label="Open profile"
       >
-{otherUser.avatar_url ? (
-  <img
-    src={otherUser.avatar_url}
-    alt={otherUser.first_name}
-    className="w-full h-full object-cover"
-    draggable={false}
-    loading="lazy"
-  />
-) : (
-  <div className="w-full h-full bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12]" />
-)}
-
+        {otherUser.avatar_url ? (
+          <img
+            src={otherUser.avatar_url}
+            alt={otherUser.first_name}
+            className="w-24 h-24 rounded-full object-cover ring-4 ring-purple-500/50"
+            draggable={false}
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#2a1938] to-[#0b0a12] ring-4 ring-purple-500/50" />
+        )}
       </button>
 
-      <button
-        type="button"
-        onClick={() => navigate(`/profile/${otherUserId}`)}
-        className="mt-3 text-xl md:text-2xl font-extrabold leading-tight hover:underline focus:underline"
-        aria-label="Open profile"
-      >
-        <span className="inline-flex items-center gap-2">
-  You matched with {otherUser.first_name}!
-  {otherUser.verified && <VerifiedBadge />}
-</span>
-      </button>
+      <h2 className="mt-4 text-2xl font-bold text-white flex items-center gap-2">
+        <span>You and {otherUser.first_name} matched!</span>
+        {otherUser.verified && <VerifiedBadge />}
+      </h2>
 
-      <div className="mt-2 text-[11px] tracking-[0.22em] text-white/70">LOOKING FOR</div>
-      <div className="mt-2 inline-flex items-center justify-center rounded-full px-4 py-1 bg-white text-[#120f1f] font-semibold text-sm">
-        Friends
-      </div>
+      <p className="mt-2 text-sm text-white/70 max-w-xs">
+        Don't be shy, say hello! A great conversation is waiting to happen.
+      </p>
     </div>
   </div>
 )}
+{/* --- END: NEW PREMIUM MATCH CARD --- */}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+110px)] space-y-2">
