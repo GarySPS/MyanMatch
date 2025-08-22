@@ -395,8 +395,6 @@ if (prefs.education_level && prefs.education_level !== "No preference") {
 
 function VerifiedBadge({ className = "" }) {
   const { t } = useI18n();
-  const ageDisplay = getAge(user);
-
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold 
@@ -930,6 +928,8 @@ setProfiles(sorted);
   const user = profiles[index];
   const name = user.first_name || user.name || t("home.noname");
   const verified = !!user.is_verified;
+  const ageDisplay = getAge(user);
+
 
   /* ---------- media & prompts parsing (match UserProfilePage) ---------- */
   const arr = (v) => {
