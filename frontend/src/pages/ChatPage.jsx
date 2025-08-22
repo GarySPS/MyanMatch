@@ -325,108 +325,110 @@ const rows = (profs || []).map((p) => {
       </div>
 
       <div className="relative z-[2] px-4 pt-6 pb-24">
-        {/* header */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="px-4 py-1.5 rounded-2xl bg-white/10 border border-white/15 font-semibold">
-            Messages
-          </span>
-        </div>
+
+         {/* header */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-3xl font-extrabold tracking-tight text-white">
+          Messages
+        </h1>
+      </div>
 
         {/* search */}
-        <div className="w-full mb-4 relative">
-          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70" />
-          <input
-            className="w-full rounded-3xl pl-11 pr-4 py-3 bg-white/10 border border-white/15 text-white placeholder-white/70 focus:outline-none"
-            placeholder="Search name"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
+      <div className="w-full mb-6 relative">
+        <FaSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 z-10" />
+        <input
+          className="w-full rounded-2xl pl-12 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/50 backdrop-blur-sm
+                     outline-none transition-all duration-300 focus:bg-white/10 focus:ring-2 focus:ring-purple-500/50"
+          placeholder="Search Matches"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
 
         {/* new matches row */}
-        <div className="mb-4">
- <div className="font-bold text-white/90 uppercase text-xs mb-2 pl-1">
-   {t("chat.newMatches")}
- </div>
-          <div className="flex gap-3 overflow-x-auto pl-1 pb-1">
-            {filtered.map((m) => (
-              <Link
-                key={m.user_id}
-                to={`/chat/${m.user_id}`}
-                className="flex flex-col items-center"
-              >
-<div className="relative p-[2px] rounded-full bg-gradient-to-tr from-pink-500 to-purple-500">
-  {m.avatar_url ? (
-    <img
-      src={m.avatar_url}
-      alt={m.name}
-      className="w-14 h-14 rounded-full object-cover border-2 border-[#0a0a12]"
-      draggable={false}
-      loading="lazy"
-    />
-  ) : (
-    <div className="w-14 h-14 rounded-full border-2 border-[#0a0a12] bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12]" />
-  )}
-  {m.verified && (
-    <span className="absolute -bottom-0.5 -right-0.5 bg-[#0a0a12] rounded-full p-[2px] ring-2 ring-[#0a0a12]" title="Verified">
-      <svg viewBox="0 0 24 24" width="14" height="14" className="fill-sky-400"><path d="M12 2l2.39 2.39 3.38-.49-.49 3.38L20 10l-2.72 1.72.49 3.38-3.38-.49L12 17l-2.39-2.39-3.38.49.49-3.38L4 10l2.72-1.72-.49-3.38 3.38.49L12 2zm-1.2 12.6l5-5-1.4-1.4-3.6 3.6-1.6-1.6-1.4 1.4 3 3z"/></svg>
-    </span>
-  )}
-</div>
-<div className="mt-1 text-white text-xs font-semibold truncate w-16 text-center">{m.name}</div>
-                <div className="mt-1 text-white text-xs font-semibold truncate w-16 text-center">
-                  {m.name}
-                </div>
-              </Link>
-            ))}
-          </div>
+      <div className="mb-6">
+        <div className="font-bold text-white/90 uppercase tracking-wider text-xs mb-3 px-1">
+          {t("chat.newMatches")}
         </div>
+        {/* Added a 'no-scrollbar' class for cleaner look - you'd add this to your global CSS */}
+        <div className="flex gap-4 overflow-x-auto px-1 pb-2 no-scrollbar">
+          {filtered.map((m) => (
+            <Link
+              key={m.user_id}
+              to={`/chat/${m.user_id}`}
+              className="flex flex-col items-center flex-shrink-0 group"
+            >
+              <div className="relative">
+                {m.avatar_url ? (
+                  <img
+                    src={m.avatar_url}
+                    alt={m.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-pink-500/50 group-hover:border-pink-400 transition-colors"
+                    draggable={false}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12] border-2 border-pink-500/50" />
+                )}
+                {m.verified && (
+                  <div className="absolute -bottom-1 -right-1 bg-sky-400 rounded-full p-1 border-2 border-[#120f1f]">
+                    <svg viewBox="0 0 16 16" width="10" height="10" className="fill-white"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 text-white/80 group-hover:text-white transition-colors text-xs font-semibold truncate w-20 text-center">
+                {m.name}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
 
         {/* most recent list */}
-        <div>
- <div className="font-bold text-white/90 uppercase text-xs mb-2 pl-1">
-   {t("chat.recent", { heart: "❤️" })}
- </div>
-          <ul className="space-y-3">
-            {filtered.map((m) => (
-              <li
-                key={m.user_id}
-                className="flex items-center p-3 bg-white/5 rounded-2xl border border-white/10"
-              >
-                <Link to={`/chat/${m.user_id}`} className="flex items-center flex-1">
-{m.avatar_url ? (
-  <img
-    src={m.avatar_url}
-    alt={m.name}
-    className="w-12 h-12 rounded-full mr-3 object-cover"
-    draggable={false}
-    loading="lazy"
-  />
-) : (
-  <div className="w-12 h-12 rounded-full mr-3 bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12]" />
-)}
-                  <div className="flex-1 min-w-0">
-<div className="text-white font-bold text-base truncate flex items-center gap-2">
-  <span className="truncate">{m.name}</span>
-  {m.verified && <VerifiedBadge />}
-</div>
-                    <div className="text-white/80 text-sm truncate">
-                      {m.matchedAt
-                        ? `Matched • ${fmtDateTime(m.matchedAt)}`
-                        : "A new connection awaits ✨"}
-                    </div>
-                  </div>
-                </Link>
-                <Link
-                  to={`/chat/${m.user_id}`}
-                  className="bg-white text-[#111117] text-xs font-extrabold rounded-full px-3 py-1 ml-2 shadow"
-                >
-                  Chat
-                </Link>
-              </li>
-            ))}
-          </ul>
+      <div>
+        <div className="font-bold text-white/90 uppercase tracking-wider text-xs mb-3 px-1">
+          {t("chat.recent", { heart: "❤️" })}
         </div>
+        <ul className="space-y-3">
+          {filtered.map((m) => (
+            <li key={m.user_id}>
+              <Link
+                to={`/chat/${m.user_id}`}
+                className="flex items-center p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10
+                           transition-all duration-300 group"
+              >
+                {m.avatar_url ? (
+                  <img
+                    src={m.avatar_url}
+                    alt={m.name}
+                    className="w-14 h-14 rounded-full mr-4 object-cover"
+                    draggable={false}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full mr-4 bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12]" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-bold text-lg truncate flex items-center gap-2">
+                    <span className="truncate">{m.name}</span>
+                    {m.verified && <VerifiedBadge />}
+                  </div>
+                  <div className="text-white/70 text-sm truncate">
+                    {m.matchedAt
+                      ? `Matched • ${fmtDateTime(m.matchedAt)}`
+                      : "A new connection awaits ✨"}
+                  </div>
+                </div>
+                <div className="ml-4 px-5 py-2 rounded-full text-white font-bold text-sm
+                              bg-gradient-to-tr from-pink-500 to-[#a259c3]
+                              shadow-lg shadow-pink-500/20 group-hover:scale-105 transition-transform">
+                  Chat
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
       </div>
     </div>
   );
