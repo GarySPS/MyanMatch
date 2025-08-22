@@ -278,13 +278,20 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
           <NavRow label={t("nav.convGuide")} icon="🗨️" onClick={() => navigate("/ConversationGuidePage")} />
           <NavDivider />
 
-          {/* NEW SECTION — place above Log out */}
+          {/* ✅ Customer Support row added here */}
+          <NavRow
+            label="Customer Support"
+            icon="📞"
+            onClick={() => window.open("https://t.me/myanmatch", "_blank")}
+          />
+
           <NavRow
             label={t("nav.language")}
             icon="🌐"
             rightText={language === "my" ? t("lang.myanmar") : t("lang.english")}
             onClick={() => navigate("/settings/language")}
           />
+
           <NavRow label={t("nav.download")} icon="⬇️" onClick={() => navigate("/Download")} />
           <NavRow label={t("nav.changePw")} icon="🔒" onClick={() => navigate("/ChangePassword")} />
           <NavRow label={t("nav.acctSecurity")} icon="🛡️" onClick={() => navigate("/AccountSecurityPage")} />
