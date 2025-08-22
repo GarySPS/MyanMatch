@@ -3,11 +3,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "../i18n";
 
-// 👉 Replace these with your own images later
-import step1 from "../assets/ios-step1.png"; // share button
-import step2 from "../assets/ios-step2.png"; // Add to Home Screen
-import step3 from "../assets/ios-step3.png"; // confirm Add
-
 export default function DownloadPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -132,20 +127,20 @@ export default function DownloadPage() {
             {t("download.iosDesc")}
           </p>
 
-          <ol className="space-y-4">
-            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-              <img src={step1} alt="Tap the Share button in Safari" className="w-full object-cover" />
-              <div className="p-3 text-sm">{t("download.iosStep1")}</div>
-            </li>
-            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-              <img src={step2} alt="Choose Add to Home Screen" className="w-full object-cover" />
-              <div className="p-3 text-sm">{t("download.iosStep2")}</div>
-            </li>
-            <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-              <img src={step3} alt="Confirm Add" className="w-full object-cover" />
-              <div className="p-3 text-sm">{t("download.iosStep3")}</div>
-            </li>
-          </ol>
+<ol className="space-y-4">
+  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+    <img src="/assets/ios-step1.png" alt="Tap the Share button in Safari" className="w-full object-cover" />
+    <div className="p-3 text-sm">{t("download.iosStep1")}</div>
+  </li>
+  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+    <img src="/assets/ios-step2.png" alt="Choose Add to Home Screen" className="w-full object-cover" />
+    <div className="p-3 text-sm">{t("download.iosStep2")}</div>
+  </li>
+  <li className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+    <img src="/assets/ios-step3.png" alt="Confirm Add" className="w-full object-cover" />
+    <div className="p-3 text-sm">{t("download.iosStep3")}</div>
+  </li>
+</ol>
 
           <div className="mt-4 text-[12px] text-white/60">
             {t("download.iosNote")}
