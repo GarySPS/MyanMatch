@@ -9,7 +9,7 @@ export default function Layout({ children }) {
   // Hide bottom bar for full-screen threads like /chat/:userId
   const hideBottomNav = /^\/chat\/[^/]+$/i.test(pathname);
   // Pages that draw their own full-screen background (no Layout background)
-const fullBleed = /^\/HomePage$/i.test(pathname);
+  const fullBleed = /^\/(HomePage|Profile|UserProfilePage)$/i.test(pathname);
 
   // Dynamic bottom padding:
   // - when BottomNav is visible: content gets room for the nav + safe area

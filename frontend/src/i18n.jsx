@@ -320,7 +320,7 @@ const STRINGS = {
 // Birthdate page
 "dob.title": "What's your date of birth?",
 "dob.confirmTitle": "Please confirm your info",
-"dob.age": "{age} years old",
+"dob.age": "{age}",
 "dob.born": "Born {date}",
 "dob.edit": "Edit",
 "dob.confirm": "Confirm",
@@ -1167,11 +1167,12 @@ const STRINGS = {
 // Birthdate page
 "dob.title": "သင်၏ မွေးသက္ကရာဇ်က ဘယ်နေ့လဲ?",
 "dob.confirmTitle": "အချက်အလက် အတည်ပြုပါရှင်",
-"dob.age": "အသက် {age} နှစ်",
+"dob.age": "{age}",
 "dob.born": "{date} တွင် မွေးဖွားသည်",
 "dob.edit": "ပြင်မည်",
 "dob.confirm": "အတည်ပြုမည်",
 "dob.nextAria": "ရှေ့သို့",
+"about": "About",
 
 // Children page
 "children.title": "သားသမီး ရှိပါသလား?",
@@ -1294,6 +1295,7 @@ const STRINGS = {
 "loc.btn.use": "လက်ရှိ တည်နေရာကို အသုံးပြုမည်ရှင့်",
 "loc.btn.loading": "ရှာဖွေနေသည်…",
 "loc.nextAria": "ရှေ့သို့",
+"about": "အကြောင်းအရာ",
 
 // Location popups
 "loc.pop.unsupported.title": "တည်နေရာကို မပံ့ပိုးသေးပါရှင်",
@@ -1352,7 +1354,7 @@ const STRINGS = {
 "prompts.modal.title": "ပရိုဖိုင် Prompt ရွေးချယ်ပါ",
 
 // Prompt pool (my)
-"prompts.pool.rant": "အားနည်းချက်လေး တစ်ချက် ပြောပြချင်တာဆိုရင်",
+"prompts.pool.rant": "ပေါက်ကွဲတတ်တဲ့အားနည်းချက်လေး တစ်ချက် ပြောပြချင်တာဆိုရင်",
 "prompts.pool.keyToHeart": "ကျနော့်နှလုံးသားအတွက် သော့ချက်က",
 "prompts.pool.setupPunchline": "မင်းကိုစိတ်ဝင်စားမှုရှိတယ်ဆိုရင် ကျနော်ပြမယ့်အရိပ်က",
 "prompts.pool.unusualSkills": "ထူးထူးခြားခြား ကျွမ်းကျင်သမျှ",
