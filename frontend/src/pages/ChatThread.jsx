@@ -593,46 +593,51 @@ const doUnmatch = async () => {
     }
   };
 
-  /* ----------------------- Render helpers ----------------------- */
+/* ----------------------- Render helpers ----------------------- */
   const renderBubble = (m) => {
     const mine = m.sender_id === myId;
 
-    const base = "rounded-2xl max-w-[78%] leading-relaxed shadow-sm";
-    const mineCls = "bg-[#E6FF6A] text-black rounded-br-md";
-    const otherCls = "bg-white/10 text-white border border-white/10 rounded-bl-md";
+    // Define base and specific styles for bubbles
+    const base = "rounded-t-2xl rounded-b-lg max-w-[78%] leading-relaxed shadow-md";
+    const mineCls = "bg-gradient-to-br from-pink-500 to-purple-500 text-white";
+    const otherCls = "bg-[#2E2D3D] text-white/90";
 
-    if (m.type === "file") {
-      const isImage = (m.media_mime || "").startsWith("image/");
-      if (isImage) {
-        return (
-          <a href={m.media_url} target="_blank" rel="noreferrer" className="block overflow-hidden" title="Open image">
-            <img
-              src={m.media_url}
-              alt="photo"
-              className={`${mine ? "rounded-br-md" : "rounded-bl-md"} rounded-2xl max-w-[78vw] max-h-[60vh] object-cover border border-white/10`}
-            />
-          </a>
-        );
-      }
+    // Handle image files
+    if (m.type === "file" && (m.media_mime || "").startsWith("image/")) {
       return (
-        <div className={`${base} ${mine ? mineCls : otherCls} px-4 py-2 break-words`}>
-          <a className="underline break-all" href={m.media_url} target="_blank" rel="noreferrer">
+        <a href={m.media_url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border-2 border-white/10 shadow-lg" title="Open image">
+          <img
+            src={m.media_url}
+            alt="photo"
+            className="max-w-[70vw] max-h-[50vh] object-cover"
+          />
+        </a>
+      );
+    }
+
+    // Handle other files
+    if (m.type === "file") {
+      return (
+        <div className={`${base} ${mine ? mineCls : otherCls} px-4 py-3 break-words`}>
+          <a className="underline font-semibold break-all" href={m.media_url} target="_blank" rel="noreferrer">
             {m.content || "Download file"}
           </a>
         </div>
       );
     }
-
+    
+    // Handle voice messages
     if (m.type === "voice") {
-      return (
-        <div className={`${base} ${mine ? mineCls : otherCls} px-4 py-2`}>
-          <audio src={m.media_url} controls className="w-56" />
-        </div>
-      );
+        return (
+          <div className={`${base} ${mine ? mineCls : otherCls} p-2`}>
+            <audio src={m.media_url} controls className="w-60 h-10" />
+          </div>
+        );
     }
 
+    // Handle standard text messages
     return (
-      <div className={`${base} ${mine ? mineCls : otherCls} px-4 py-2 break-words`}>
+      <div className={`${base} ${mine ? mineCls : otherCls} px-4 py-3 break-words`}>
         {m.content}
       </div>
     );
@@ -651,104 +656,74 @@ const doUnmatch = async () => {
       {/* PAGE CONTENT */}
       <div className="relative z-[2] flex flex-col min-h-screen">
 
-{/* Header (FIXED TOP) */}
-<div className="fixed top-0 left-1/2 -translate-x-1/2 z-[60] w-full max-w-[480px] px-3 py-2 border-b border-white/10 bg-white/5 backdrop-blur supports-[backdrop-filter]:bg-white/10">
-  <div className="flex items-center justify-between">
+{/* --- START: NEW UPGRADED HEADER --- */}
+<div className="fixed top-0 left-1/2 -translate-x-1/2 z-30 w-full max-w-[480px] bg-[#120f1f]/80 backdrop-blur-lg border-b border-white/10">
+  <div className="flex items-center justify-between p-3">
+    {/* Left Side: Back & Profile Info */}
     <div className="flex items-center gap-3 min-w-0">
       <button
         onClick={() => navigate(-1)}
-        className="text-white/90 p-1 -ml-1"
+        className="p-2 rounded-full hover:bg-white/10 text-white/90 transition-colors"
         aria-label="Back"
       >
-        <IoArrowBack size={22} />
+        <IoArrowBack size={24} />
       </button>
 
       {otherUser && (
         <button
-          type="button"
           onClick={() => navigate(`/profile/${otherUserId}`)}
-          className="flex items-center gap-2 min-w-0 group"
+          className="flex items-center gap-3 min-w-0 group"
           aria-label="Open profile"
         >
-<span className="font-semibold text-base truncate group-hover:underline">
-  {otherUser.first_name}
-</span>
-{otherUser.verified && <VerifiedBadge className="ml-2 scale-90" />}
+          {otherUser.avatar_url ? (
+            <img src={otherUser.avatar_url} alt={otherUser.first_name} className="w-10 h-10 rounded-full object-cover" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2a1938] to-[#0b0a12]" />
+          )}
+          <div className="flex flex-col items-start min-w-0">
+            <span className="font-bold text-lg text-white truncate group-hover:underline">
+              {otherUser.first_name}
+            </span>
+            {otherUser.verified && <VerifiedBadge />}
+          </div>
         </button>
       )}
     </div>
 
+    {/* Right Side: Actions */}
     <div className="flex items-center gap-2">
       <button
         onClick={() => setGiftOpen(true)}
-        className="px-3 py-2.5 rounded-full bg-[#FFD84D] text-black font-bold hover:opacity-90 active:scale-95 inline-flex items-center gap-2"
+        className="p-2.5 rounded-full bg-gradient-to-tr from-pink-500 to-purple-500 text-white shadow-lg shadow-pink-500/20 hover:scale-105 transition-transform"
         aria-label="Send gift"
         title="Send gift"
       >
-        <FaGift size={16} />
-        <span className="text-sm">Send Gift</span>
+        <FaGift size={18} />
       </button>
 
-<button
-  onClick={() => setUnmatchOpen(true)}
-  disabled={busyUnmatch}
-        className="px-3 py-2.5 rounded-full border border-white/30 text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-60"
+      <button
+        onClick={() => setUnmatchOpen(true)}
+        disabled={busyUnmatch}
+        className="p-2.5 rounded-full bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-60"
         aria-label="Unmatch"
         title="Unmatch"
       >
-        <IoTrash size={16} />
-        <span className="text-sm">{busyUnmatch ? "Removing…" : "Unmatch"}</span>
+        <IoTrash size={18} />
       </button>
     </div>
   </div>
 </div>
 
-{/* spacer for fixed header height */}
-<div className="h-[56px]" />
+{/* Spacer for new fixed header height */}
+<div className="h-[76px]" />
 
-{/* Matched banner (COMPACT / CENTERED) */}
+{/* New Inline Match Info */}
 {otherUser && (
-  <div className="px-4 pt-5 pb-4">
-    <div className="mx-auto max-w-[460px] rounded-3xl bg-white/5 border border-white/10 px-5 py-5 text-center shadow-lg">
-      <button
-        type="button"
-        onClick={() => navigate(`/profile/${otherUserId}`)}
-        className="mx-auto block w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden ring-4 ring-white/60 shadow focus:outline-none focus:ring-[#FFD84D]"
-        aria-label="Open profile"
-      >
-{otherUser.avatar_url ? (
-  <img
-    src={otherUser.avatar_url}
-    alt={otherUser.first_name}
-    className="w-full h-full object-cover"
-    draggable={false}
-    loading="lazy"
-  />
-) : (
-  <div className="w-full h-full bg-gradient-to-br from-[#2a1938] via-[#1a1324] to-[#0b0a12]" />
-)}
-
-      </button>
-
-      <button
-        type="button"
-        onClick={() => navigate(`/profile/${otherUserId}`)}
-        className="mt-3 text-xl md:text-2xl font-extrabold leading-tight hover:underline focus:underline"
-        aria-label="Open profile"
-      >
-        <span className="inline-flex items-center gap-2">
-  You matched with {otherUser.first_name}!
-  {otherUser.verified && <VerifiedBadge />}
-</span>
-      </button>
-
-      <div className="mt-2 text-[11px] tracking-[0.22em] text-white/70">LOOKING FOR</div>
-      <div className="mt-2 inline-flex items-center justify-center rounded-full px-4 py-1 bg-white text-[#120f1f] font-semibold text-sm">
-        Friends
-      </div>
+    <div className="px-4 py-4 text-center text-sm text-white/60">
+        You matched with {otherUser.first_name}.
     </div>
-  </div>
 )}
+{/* --- END: NEW UPGRADED HEADER --- */}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+110px)] space-y-2">
@@ -764,64 +739,62 @@ const doUnmatch = async () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Composer */}
+ {/* Composer */}
 <form
-  onSubmit={(e) => { e.preventDefault(); if (message.trim()) handleSendText(); }}
-  className="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] left-1/2 -translate-x-1/2 w-full max-w-[480px] px-3 pt-2 pb-2 bg-white/5 backdrop-blur border-t border-white/10"
+    onSubmit={(e) => { e.preventDefault(); if (message.trim()) handleSendText(); }}
+    className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[#120f1f]/80 backdrop-blur-lg border-t border-white/10"
+    style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + 8px)` }}
 >
-          <div className="flex items-center gap-2">
-            {/* Attach + Mic when no text */}
-            {message.trim().length === 0 && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileChosen}
-                  accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 rounded-full bg-white/10 hover:bg-white/15"
-                  aria-label="Attach file"
-                  title={`Attach (≤ ${(MAX_BYTES/1024/1024)|0}MB)`}
-                >
-                  <IoAttach size={22} />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleRecord}
-                  className={`p-3 rounded-full ${isRecording ? "bg-[#FFD84D] text-black animate-pulse" : "bg-white/10 hover:bg-white/15"}`}
-                  aria-label="Record voice"
-                  title={isRecording ? "Stop recording" : "Record voice"}
-                >
-                  <IoMic size={22} />
-                </button>
-              </>
-            )}
+    <div className="flex items-end gap-2 px-3 pt-2">
+        {/* Action Buttons */}
+        <button
+            type="button"
+            onClick={onPickFile}
+            className="p-3 rounded-full text-white/80 hover:bg-white/10 transition-colors"
+            aria-label="Attach file"
+            title={`Attach (≤ ${(MAX_BYTES/1024/1024)|0}MB)`}
+        >
+            <IoAttach size={24} />
+        </button>
+        <button
+            type="button"
+            onClick={toggleRecord}
+            className={`p-3 rounded-full transition-colors ${isRecording ? "bg-red-500 text-white animate-pulse" : "text-white/80 hover:bg-white/10"}`}
+            aria-label={isRecording ? "Stop recording" : "Record voice"}
+        >
+            <IoMic size={24} />
+        </button>
 
-            <input
-              type="text"
-              className="flex-1 rounded-full px-4 py-3 bg-white/10 border border-white/15 text-white placeholder-white/60 text-sm outline-none"
-              placeholder={isRecording ? "Recording… tap mic to stop" : "Type a message…"}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              disabled={isRecording}
-            />
+        {/* Text Input */}
+        <textarea
+            rows={1}
+            className="flex-1 resize-none self-center max-h-24 rounded-2xl px-4 py-2.5 bg-white/10 border border-transparent text-white placeholder-white/60
+                       outline-none focus:border-purple-500/50 transition-colors"
+            placeholder="Type a message..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isRecording}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendText();
+              }
+            }}
+        />
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChosen} />
 
-            {message.trim().length > 0 ? (
-              <button
-                type="submit"
-                className="p-3 rounded-full bg-[#FFD84D] text-black active:scale-95 transition"
-                aria-label="Send"
-                title="Send"
-              >
-                <IoSend size={22} />
-              </button>
-            ) : null}
-          </div>
-        </form>
+        {/* Send Button */}
+        <button
+            type="submit"
+            className="p-3 rounded-full bg-gradient-to-tr from-pink-500 to-purple-500 text-white
+                       shadow-lg shadow-pink-500/20 transition-transform active:scale-90 disabled:opacity-50 disabled:scale-100"
+            aria-label="Send"
+            disabled={!message.trim()}
+        >
+            <IoSend size={24} />
+        </button>
+    </div>
+</form>
       </div>
 
       <UnmatchConfirmModal
