@@ -64,6 +64,7 @@ import ChangePassword from "./pages/ChangePassword";
 import Language from "./pages/Language";
 import AccountSecurityPage from "./pages/AccountSecurityPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import DownloadPage from "./pages/Download";
 
 const publicRoutes = [
   { path: "/", element: <WelcomePage /> },
@@ -177,6 +178,8 @@ export default function App() {
               </ProtectedAdminRoute>
             }
           />
+
+          <Route path="/Download" element={<DownloadPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
