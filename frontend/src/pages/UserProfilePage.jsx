@@ -772,22 +772,25 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
   }
 
   /* ---------- media & prompts parsing (with storage fallback) ---------- */
-const name = user.first_name || user.name || t("home.noname");
-const verified = !!user._verified || !!user.is_verified;
-const ageDisplay = getAge(user);
+  const name = user.first_name || user.name || t("home.noname");
+  const verified = !!user._verified || !!user.is_verified;
+  const ageDisplay = getAge(user);
 
-  // normalize array-ish fields
+  // array coercion (tolerates JSON-in-string and comma-separated)
   const arr = (v) => {
+    if (!v) return [];
     if (Array.isArray(v)) return v;
-    if (typeof v === "string" && v.trim().startsWith("[")) {
-      try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch {}
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (s.startsWith("[")) { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch {} }
+      if (s.includes(",")) return s.split(",").map(x => x.trim()).filter(Boolean);
+      return [s];
     }
-    return v ? [v] : [];
+    return [v];
   };
 
-  // convert any signed URL -> public URL (since your bucket is Public)
   const signedToPublic = (u) => {
-    const s = String(u);
+    const s = String(u || "");
     const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
     if (!m) return s;
     const [, bucket, keyRaw] = m;
@@ -796,34 +799,36 @@ const ageDisplay = getAge(user);
     return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
   };
 
-  // turn objects/paths/urls into displayable URLs
   const toUrl = (item) => {
     if (!item) return null;
-
-    // object shape { url|publicUrl|signedUrl|path }
     if (typeof item === "object") {
       const u = item.url || item.publicUrl || item.signedUrl;
       if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
       if (item.path) item = item.path;
     }
-
     const s = String(item).trim();
     if (!s) return null;
-
-    // already a URL
     if (/^https?:\/\//i.test(s)) return signedToPublic(s);
 
-    // treat as storage key; default bucket is "media"
     const key = s.replace(/^public\//, "").replace(/^media\//, "");
     const bucket = s.startsWith("onboarding/") ? "onboarding" : "media";
     const { data } = supabase.storage.from(bucket).getPublicUrl(key);
     return data?.publicUrl || null;
   };
 
-  // Prefer persistent storage paths (never expire), then fall back to any stored URLs
-  const paths  = arr(user.media_paths);
-  const medias = arr(user.media);
-  const photoUrls = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
+  // Gather from all likely fields
+  const rawCandidates = [
+    ...arr(user.media_paths),
+    ...arr(user.media),
+    ...arr(user.photos),
+    ...arr(user.images),
+    ...arr(user.photo_urls),
+    ...arr(user.gallery),
+    user.photo1, user.photo2, user.photo3, user.photo4, user.photo5, user.photo6,
+  ].filter(Boolean);
+
+  const photoUrls = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
+
 
   // prompts[]
   const prompts = Array.isArray(user.prompts)

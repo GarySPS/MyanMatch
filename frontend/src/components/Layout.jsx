@@ -11,9 +11,9 @@ export default function Layout({ children }) {
   const hideBottomNav = /^\/chat\/[^/]+$/i.test(pathname);
 
 // Pages that draw their own full-screen background (no Layout PNG)
-const fullBleed = /^(?:\/(?:HomePage|Profile|UserProfilePage|settings|me|profile)(?:\/|$))$/i.test(
-  pathname.replace(/\/+$/, "") // ignore trailing slash
-);
+// Works for both the top route and any subpaths like /profile/123
+const fullBleed = /^\/(?:HomePage|Profile|UserProfilePage|settings|me|profile)(?:\/.*)?$/i
+  .test(pathname.replace(/\/+$/, ""));
 
   // Dynamic bottom padding
   const contentPadBottom = hideBottomNav
