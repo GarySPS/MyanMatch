@@ -12,6 +12,20 @@ import PhotoLikeModal from "../components/PhotoLikeModal";
 import { canSwapToday, logSwap } from "../lib/swaps";
 import { useI18n } from "../i18n";
 
+// ---- Age helpers (same as HomePage) ----
+function calcAgeFromBirthdate(birthdate) {
+  if (!birthdate) return null;
+  const d = new Date(birthdate);
+  if (isNaN(d)) return null;
+  const diff = Date.now() - d.getTime();
+  const ageDt = new Date(diff);
+  return Math.abs(ageDt.getUTCFullYear() - 1970);
+}
+function getAge(u) {
+  if (typeof u?.age === "number") return u.age;
+  return calcAgeFromBirthdate(u?.birthdate);
+}
+
 /* ---------- helpers ---------- */
 function renderValue(value) {
   if (Array.isArray(value)) return value.filter(Boolean).join(", ");
@@ -758,8 +772,9 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
   }
 
   /* ---------- media & prompts parsing (with storage fallback) ---------- */
-  const name = user.first_name || user.name || t("home.noname");
-  const verified = !!user._verified || !!user.is_verified;
+const name = user.first_name || user.name || t("home.noname");
+const verified = !!user._verified || !!user.is_verified;
+const ageDisplay = getAge(user);
 
   // normalize array-ish fields
   const arr = (v) => {
@@ -929,10 +944,15 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
       {/* Fixed name bar (same style as HomePage) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 z-40 w-full max-w-[480px] px-4 py-3 bg-white/5 backdrop-blur border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-            {name}
-            {verified && <VerifiedBadge className="ml-1 scale-90" />}
-          </div>
+<div className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+  {name}
+  {verified && <VerifiedBadge className="ml-1 scale-90" />}
+  {Number.isFinite(ageDisplay) && (
+    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/90 text-sm font-bold">
+      {ageDisplay}
+    </span>
+  )}
+</div>
 <div className="ml-auto flex items-center gap-2">
   {/* Magnifier: search by Short ID */}
   <button

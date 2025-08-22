@@ -395,6 +395,8 @@ if (prefs.education_level && prefs.education_level !== "No preference") {
 
 function VerifiedBadge({ className = "" }) {
   const { t } = useI18n();
+  const ageDisplay = getAge(user);
+
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold 
@@ -1138,11 +1140,16 @@ return (
               {name}
               {verified && <FaCheckCircle className="text-sky-400" size={18} title={t("home.verified")} />}
             </h1>
-            <p className="text-sm text-white/60 font-medium">
-                {user.age ? `${user.age} years old` : ""}
-                {user.age && Number.isFinite(user._distKm) ? " • " : ""}
-                {Number.isFinite(user._distKm) ? `~${Math.round(user._distKm)}km away` : ""}
-            </p>
+<div className="flex items-center gap-2 text-sm font-medium">
+  {Number.isFinite(ageDisplay) && (
+    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/90 font-bold">
+      {ageDisplay}
+    </span>
+  )}
+  {Number.isFinite(user._distKm) && (
+    <span className="text-white/60">~{Math.round(user._distKm)}km away</span>
+  )}
+</div>
           </div>
           <button
             onClick={() => setReportOpen(true)}
