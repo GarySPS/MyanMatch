@@ -81,6 +81,30 @@ function groupGiftRows(rows = []) {
   }));
 }
 
+// add right after imports/utilities
+function MMToast({ text, onClose }) {
+  if (!text) return null;
+  useEffect(() => {
+    const id = setTimeout(onClose, 2200);
+    return () => clearTimeout(id);
+  }, [text, onClose]);
+
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[70]
+                 bottom-[calc(env(safe-area-inset-bottom)+96px)]"
+      role="status" aria-live="polite"
+    >
+      <div
+        className="px-4 py-2 rounded-2xl bg-black/80 text-white text-sm
+                   shadow-xl border border-white/10 backdrop-blur-md"
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- page ---------------- */
 export default function MarketPage() {
   const { t } = useI18n();
@@ -95,6 +119,9 @@ export default function MarketPage() {
   const [giftQty, setGiftQty] = useState(new Map());
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const [toast, setToast] = useState("");
+  const showToast = (msg) => setToast(String(msg || ""));
 
   // deposit
   const [depositMethod, setDepositMethod] = useState("kpay");
@@ -210,8 +237,8 @@ export default function MarketPage() {
   /* --------------- actions --------------- */
   async function buyGift(gift) {
     try {
-      if (!userId) return alert(t("market.msg.signInAgain"));
-      if (coin < gift.price) return alert(t("market.msg.notEnoughCoins"));
+      if (!userId) return showToast(t("market.msg.signInAgain"));
+      if (coin < gift.price) return showToast(t("market.msg.notEnoughCoins"));
       if (buyingId) return;
       setBuyingId(gift.id);
 
@@ -220,7 +247,7 @@ export default function MarketPage() {
         p_amount: gift.price,
       });
       if (decErr) {
-        alert(decErr.message || t("market.err.deductFailed"));
+         showToast(decErr.message || t("market.err.deductFailed"));
         setBuyingId(null);
         return;
       }
@@ -234,7 +261,7 @@ export default function MarketPage() {
       }]);
       if (insErr) {
         await supabase.rpc("increment_coin", { p_user_id: userId, p_amount: gift.price });
-        alert(insErr.message || t("market.err.addGiftFailed"));
+        showToast(insErr.message || t("market.err.addGiftFailed"));
         setBuyingId(null);
         return;
       }
@@ -244,8 +271,8 @@ export default function MarketPage() {
         .insert([{ user_id: userId, type: "buy_gift", amount: gift.price, detail: gift.name, status: "approved" }], { returning: "minimal" });
 
       await fetchAll();
-    } catch (e) {
-      alert(e.message || t("market.err.buyError"));
+     } catch (e) {
+       showToast(e.message || t("market.err.buyError"));
     } finally {
       setBuyingId(null);
     }
@@ -298,8 +325,8 @@ export default function MarketPage() {
   }
 
   async function submitDepositProof() {
-    if (!depositMethod) return alert(t("market.deposit.chooseMethod"));
-    if (!proofFile) return alert(t("market.deposit.uploadScreenshotFirst"));
+    if (!depositMethod) return showToast(t("market.deposit.chooseMethod"));
+    if (!proofFile) return showToast(t("market.deposit.uploadScreenshotFirst"));
     try {
       setUploading(true);
       const ext = (proofFile.name.split(".").pop() || "png").toLowerCase();
@@ -886,6 +913,8 @@ export default function MarketPage() {
           </section>
         )}
       </div>
+      <MMToast text={toast} onClose={() => setToast("")} />
+
     </div>
   );
 }
