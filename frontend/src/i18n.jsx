@@ -848,6 +848,8 @@ const STRINGS = {
       "saveOk": "Profile updated!"
     },
 
+    },
+
     "msg": {
       "alreadyInstalled": "✅ Already installed on this device.",
       "noPrompt":
@@ -880,9 +882,8 @@ const STRINGS = {
 
     "profile": {
       "about": "About"
-    },
+    }
 
-  }
 
   },
   my: {
@@ -1642,10 +1643,10 @@ const STRINGS = {
 "prefs.opt.edu.high_school": "အထက်တန်းအဆင့်",
 "prefs.opt.edu.undergrad": "တက္ကသိုလ်အဆင့်",
 "prefs.opt.edu.postgrad": "ဘွဲ့လွန်အဆင့်",
-"prefs.opt.edu.prefer_not_to_say": "မပြောလိုပါ",
-"prefs.opt.edu.no_preference": "မရွေးချယ်ပါ",
+ "prefs.opt.edu.prefer_not_to_say": "မပြောလိုပါ",
+ "prefs.opt.edu.no_preference": "မရွေးချယ်ပါ",
 
-//EditProfilePage
+ //EditProfilePage
   "edit": {
     "title": "Profile ပြင်ဆင်ခြင်း",
     "subtitle": "ပိုမိုကိုက်ညီတဲ့ မိတ်ဆွေတွေကိုတွေ့ဖို့ ပရိုဖိုင်းကို အနည်းငယ်ညှိပေးပါ။ ပြောင်းလဲမှုတွေကို မှတ်တမ်းတင်ပေးထားပါတယ်။",
@@ -1727,6 +1728,7 @@ const STRINGS = {
       "saveFail": "သိမ်းဆည်းမှု မအောင်မြင်ပါ။ ထပ်ကြိုးစားကြည့်ပါ။",
       "saveOk": "ပရိုဖိုင်းကို သိမ်းပြီးပါပြီ!"
     },
+    },
 
     // ⬇️ add these siblings after the "edit" block inside STRINGS.my
     "download": {
@@ -1759,7 +1761,7 @@ const STRINGS = {
       "confirmAdd": "Add ကိုနှိပ်ပြီး အတည်ပြုပါ"
     }
 
-  },
+  }
 };
 
 function deepGet(obj, path) {
