@@ -991,9 +991,7 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
 
   {/* 2) About card (chips, identical to HomePage) */}
   <div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-    <h2 className="text-lg font-bold mb-3 text-white/90">
-  {t("profile.about")}
-</h2>
+<h2 className="text-lg font-bold mb-3 text-white/90">{t("profile.about")}</h2>
     <ul className="flex flex-wrap gap-2">
       {/* Self short ID (ONLY self-visible) */}
       {isSelf && user._short_id && (

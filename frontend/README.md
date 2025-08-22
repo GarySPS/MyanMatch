@@ -12,10 +12,3 @@ Currently, two official plugins are available:
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
 
-          <NavDivider />
-          <NavRow label={t("nav.whatworks")} icon="💡" onClick={() => navigate("/WhatWorksPage")} />
-          <NavRow label={t("nav.photoGuide")} icon="📸" onClick={() => navigate("/PhotoGuidePage")} />
-          <NavRow label={t("nav.promptGuide")} icon="💬" onClick={() => navigate("/PromptGuidePage")} />
-          <NavRow label={t("nav.matchingGuide")} icon="❤️" onClick={() => navigate("/MatchingGuidePage")} />
-          <NavRow label={t("nav.convGuide")} icon="🗨️" onClick={() => navigate("/ConversationGuidePage")} />
-          <NavDivider />

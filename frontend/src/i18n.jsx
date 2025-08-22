@@ -848,21 +848,23 @@ const STRINGS = {
       "saveOk": "Profile updated!"
     },
 
-    "download": {
-  "title": "Download MyanMatch",
-  "android": "Android",
-  "androidDesc": "Install the app to your home screen for the best experience.",
-  "installAndroid": "Install on Android",
-  "already": "Already installed",
-  "androidTip": "Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap “Install app” or “Add to Home screen”.",
-  "ios": "iOS (iPhone)",
-  "iosDesc": "Install from Safari using “Add to Home Screen”.",
-  "iosStep1": "1) In Safari, tap the Share button.",
-  "iosStep2": "2) Choose Add to Home Screen.",
-  "iosStep3": "3) Tap Add to finish.",
-  "iosNote": "Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser.",
-  "androidTip": "Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap “Install app” or “Add to Home screen”."
-}
+download: {
+  title: "Download MyanMatch",
+  android: "Android",
+  androidDesc: "Install the app to your home screen for the best experience.",
+  installAndroid: "Install on Android",
+  already: "Already installed",
+  androidTip: "Tip: Use Chrome on Android. If the button doesn’t appear, open the ⋮ menu and tap “Install app” or “Add to Home screen”.",
+  ios: "iOS (iPhone)",
+  iosDesc: "Install from Safari using “Add to Home Screen”.",
+  iosStep1: "1) In Safari, tap the Share button.",
+  iosStep2: "2) Choose Add to Home Screen.",
+  iosStep3: "3) Tap Add to finish.",
+  iosNote: "Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser."
+},
+profile: {
+  about: "About"
+},
 
   }
 
@@ -1189,7 +1191,6 @@ const STRINGS = {
 "dob.edit": "ပြင်မည်",
 "dob.confirm": "အတည်ပြုမည်",
 "dob.nextAria": "ရှေ့သို့",
-"about": "About",
 
 // Children page
 "children.title": "သားသမီး ရှိပါသလား?",
@@ -1312,7 +1313,6 @@ const STRINGS = {
 "loc.btn.use": "လက်ရှိ တည်နေရာကို အသုံးပြုမည်ရှင့်",
 "loc.btn.loading": "ရှာဖွေနေသည်…",
 "loc.nextAria": "ရှေ့သို့",
-"about": "အကြောင်းအရာ",
 
 // Location popups
 "loc.pop.unsupported.title": "တည်နေရာကို မပံ့ပိုးသေးပါရှင်",
@@ -1712,21 +1712,24 @@ const STRINGS = {
       "saveOk": "ပရိုဖိုင်းကို သိမ်းပြီးပါပြီ!"
     },
 
-    "download": {
-  "title": "MyanMatch ကို ဒေါင်းလုဒ်ဆွဲပါ",
-  "android": "အန်ဒရိုက်",
-  "androidDesc": "အကောင်းဆုံးအသုံးပြုနိုင်ဖို့ Home Screen မှာ အက်ပ်ထည့်ပါ။",
-  "installAndroid": "Android မှာ တပ်ဆင်မည်",
-  "already": "ပြီးသား တပ်ဆင်ထားပြီးပါပြီ",
-  "androidTip": "အကြံပြုချက် - Chrome ဖြင့် Android မှာအသုံးပြုပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲက “Install app” (သို့မဟုတ်) “Add to Home screen” ကိုနှိပ်ပါ။",
-  "ios": "iOS (iPhone)",
-  "iosDesc": "Safari မှာ “Add to Home Screen” ကိုသုံးပြီး တပ်ဆင်ပါ။",
-  "iosStep1": "၁) Safari မှာ Share ခလုတ်ကိုနှိပ်ပါ။",
-  "iosStep2": "၂) “Add to Home Screen” ကိုရွေးပါ။",
-  "iosStep3": "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
-  "iosNote": "မှတ်ချက် - iOS မှာ PWA ကို Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။",
-  "androidTip": "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။"
-}
+download: {
+  title: "MyanMatch ကို ဒေါင်းလုဒ်ဆွဲပါ",
+  android: "အန်ဒရိုက်",
+  androidDesc: "အကောင်းဆုံးအသုံးပြုရန် Home Screen မှာ အက်ပ်ကိုထည့်သုံးပါ။",
+  installAndroid: "Android ပေါ်တွင် တပ်ဆင်မည်",
+  already: "ပြီးသား တပ်ဆင်ထားပြီးပါပြီ",
+  androidTip: "အကြံပြုချက် - Android တွင် Chrome သုံးပါ။ Button မပေါ်ပါက ⋮ မီနူးထဲမှ “Install app” သို့မဟုတ် “Add to Home screen” ကိုနှိပ်ပါ။",
+  ios: "iOS (iPhone)",
+  iosDesc: "Safari တွင် “Add to Home Screen” ဖြင့်တပ်ဆင်ပါ။",
+  iosStep1: "၁) Safari တွင် Share ခလုတ်ကိုနှိပ်ပါ။",
+  iosStep2: "၂) “Add to Home Screen” ကိုရွေးပါ။",
+  iosStep3: "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
+  iosNote: "မှတ်ချက် — iOS တွင် PWA ကို Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
+},
+profile: {
+  about: "အကြောင်းအရာ"
+},
+
 
   }
   },
