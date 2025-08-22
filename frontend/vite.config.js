@@ -8,18 +8,17 @@ const __dirname = path.dirname(__filename)
 
 export default defineConfig({
   plugins: [react()],
+  base: "/",                       // <<< add this line
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
+    alias: { '@': path.resolve(__dirname, 'src') },
   },
+  build: { outDir: "dist" },       // optional but explicit
   server: {
     proxy: {
       '/api': {
         target: 'http://localhost:5050',
         changeOrigin: true,
-        // If your backend is NOT using /api as a prefix, you can uncomment this:
-        // rewrite: path => path.replace(/^\/api/, ''),
+        // rewrite: p => p.replace(/^\/api/, ''), // keep commented
       },
     },
   },
