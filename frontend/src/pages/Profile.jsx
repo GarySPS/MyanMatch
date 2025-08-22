@@ -270,13 +270,7 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
               setShowBoostModal(true);
             }}
           />
-          //<NavDivider />
-          //<NavRow label={t("nav.whatworks")} icon="💡" onClick={() => navigate("/WhatWorksPage")} />
-          //<NavRow label={t("nav.photoGuide")} icon="📸" onClick={() => navigate("/PhotoGuidePage")} />
-          //<NavRow label={t("nav.promptGuide")} icon="💬" onClick={() => navigate("/PromptGuidePage")} />
-          //<NavRow label={t("nav.matchingGuide")} icon="❤️" onClick={() => navigate("/MatchingGuidePage")} />
-          //<NavRow label={t("nav.convGuide")} icon="🗨️" onClick={() => navigate("/ConversationGuidePage")} />
-          //<NavDivider />
+    //navdiver
 
           {/* ✅ Customer Support row added here */}
           <NavRow
