@@ -217,6 +217,14 @@ function baseMime(mime = "") {
   return String(mime).split(";")[0];
 }
 
+// --- joins VITE_API_BASE + path safely (prevents /api/api and //)
+function apiUrl(path = "") {
+  const base = String(import.meta.env.VITE_API_BASE || "").replace(/\/+$/, ""); // strip trailing /
+  const p = String(path || "").replace(/^\/+/, "");                             // strip leading /
+  return `${base}/${p}`;
+}
+
+
   const handleFinish = async () => {
     setSaving(true);
     setError("");
@@ -236,8 +244,10 @@ function baseMime(mime = "") {
     }
 
 // ---- build payload & upsert by user_id ----
-const payload = buildPayload(profileData || {});
-payload.user_id = user.id; // key by user_id (backend auth)
+ const payload = buildPayload(profileData || {});
+ payload.user_id = user.id; // key by profiles.user_id
+
+ console.log("Finish payload:", payload);
 
 // --- Voice Prompt upload via BACKEND (safe MIME) ---
 try {
@@ -252,10 +262,10 @@ try {
     fd.append("file", vp.file, `voice.${(vp.file.type || "audio/webm").split("/")[1]?.split(";")[0] || "webm"}`);
 
     // NOTE: change to your actual API base
-const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/voice/onboarding/voice`, {
-  method: "POST",
-  body: fd,
-});
+const url = apiUrl("voice/onboarding/voice");
+console.log("Uploading voice to:", url); // optional debug
+const res = await fetch(url, { method: "POST", body: fd });
+
     if (!res.ok) {
       console.error("voice upload failed:", await res.text());
       voicePromptJSON = null; // clear the column if upload failed
@@ -289,11 +299,13 @@ const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/voice/onboarding/v
   // continue – don’t block profile save
 }
 
-const { error: dbErr } = await supabase
-  .from("profiles")
-  .upsert(payload, { onConflict: "user_id" })
-  .select("user_id")
-  .single();   // <--- ADD THIS
+ const { error: dbErr } = await supabase
+   .from("profiles")
+   .upsert(payload, { onConflict: "user_id" })
+   .select("user_id")
+   .single();
+
+   if (dbErr) console.error(dbErr);
 
     if (dbErr) {
       setError("Failed to save your profile: " + dbErr.message);

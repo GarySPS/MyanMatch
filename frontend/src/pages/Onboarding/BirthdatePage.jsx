@@ -67,6 +67,7 @@ export default function BirthdatePage() {
     setProfileData(prev => ({ ...prev, birthdate, age }));
     setShowModal(false);
     navigate("/onboarding/details-intro");
+    
   };
 
   const displayDate = `${months.long[monthIdx]} ${day}, ${year}`;

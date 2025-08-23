@@ -746,7 +746,7 @@ if (!myId) {
 // Load my plan + age + coords (for distance) + my preferences
 const { data: me } = await supabase
   .from("profiles")
-  .select("membership_plan, is_plus, age, birthdate, geo_lat, geo_lng, latitude, longitude, lat, lng")
+  .select("*")
   .eq("user_id", myId)
   .maybeSingle();
 
@@ -806,11 +806,11 @@ const distanceLimitKm = (!myCoord || xWantsGlobal)
       const excludeIds = Array.from(new Set([myId, ...passedIds, ...likedIds]));
 
       // Base query
-      let q = supabase
-        .from("profiles")
-        .select("*")
-        .eq("onboarding_complete", true)
-        .neq("user_id", myId);
+let q = supabase
+  .from("profiles")
+  .select("*")
+  .neq("user_id", myId);
+
 
       if (excludeIds.length > 1) {
         const others = excludeIds.filter(id => id !== myId);
