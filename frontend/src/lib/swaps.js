@@ -4,8 +4,8 @@ import { supabase } from "../supabaseClient";
 export function dailyLimitFor(plan) {
   const p = String(plan || "free").toLowerCase();
   if (p === "x") return Infinity;
-  if (p === "plus") return 50;
-  return 20; // free
+  if (p === "plus") return 40;
+  return 15; // free
 }
 
 /** Start + end of "today" in UTC */

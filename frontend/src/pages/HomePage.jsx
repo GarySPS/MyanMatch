@@ -157,6 +157,15 @@ function cleanEthnicityKey(v) {
   return s;
 }
 
+// ADD: normalize preference gender values to profile's canonical values
+function normalizeGenderKey(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (["women", "female", "girl", "girls", "lady", "ladies"].includes(s)) return "woman";
+  if (["men", "male", "boy", "boys", "guy", "guys"].includes(s)) return "man";
+  if (["non-binary", "non binary", "nb", "enby"].includes(s)) return "nonbinary";
+  return s;
+}
+
 // ---- i18n mapping helpers for profile values ----
 const OPTION_KEY = {
   gender: {
@@ -324,12 +333,13 @@ function matchesPreferences(user, prefs, myAge) {
     if (typeof prefs.age_max === "number" && a > prefs.age_max) return false;
   }
 
-  // 2) Show me (genders)
-  const wantGenders = coerceArray(prefs.genders).map(g => String(g).toLowerCase());
-  if (wantGenders.length) {
-    const g = (user.gender || user.genders || user.sex || "").toString().toLowerCase();
-    if (!wantGenders.includes(g)) return false;
-  }
+// 2) Show me (genders)
+const wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey);
+if (wantGenders.length) {
+  const g = normalizeGenderKey(user.gender || user.genders || user.sex || "");
+  if (!wantGenders.includes(g)) return false;
+}
+
 
   // 3) Quality
   if (prefs.verified_only && !user.is_verified && !user.kyc_verified) return false;
@@ -818,13 +828,13 @@ let q = supabase
         q = q.not("user_id", "in", excludeSql);
       }
 
-      // Optional server-side prefilters
-      const wantGenders = coerceArray(prefs.genders).map(g => String(g).toLowerCase());
-      if (wantGenders.length === 1) {
-        q = q.eq("gender", wantGenders[0]);
-      } else if (wantGenders.length > 1) {
-        q = q.in("gender", wantGenders);
-      }
+// Optional server-side prefilters
+const wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey);
+if (wantGenders.length === 1) {
+  q = q.eq("gender", wantGenders[0]);
+} else if (wantGenders.length > 1) {
+  q = q.in("gender", wantGenders);
+}
 
       if (prefs.verified_only) {
         q = q.eq("is_verified", true);

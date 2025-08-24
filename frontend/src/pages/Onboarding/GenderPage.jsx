@@ -9,6 +9,7 @@ const GENDERS = [
   { key: "gender.opt.woman", labelEn: "Woman", value: "woman" },
   { key: "gender.opt.nonbinary", labelEn: "Nonbinary", value: "nonbinary" },
 ];
+const ALLOWED_GENDERS = new Set(["man", "woman", "nonbinary"]);
 
 export default function GenderPage() {
   const navigate = useNavigate();
@@ -17,15 +18,16 @@ export default function GenderPage() {
 
   const [gender, setGender] = useState("");
 
-  const handleNext = () => {
-    if (!gender) return;
-    setProfileData(prev => ({
-      ...prev,
-      gender, // store canonical value
-      // No gender_visible!
-    }));
-    navigate("/onboarding/sexuality");
-  };
+// REPLACE: handleNext
+const handleNext = () => {
+  if (!ALLOWED_GENDERS.has(gender)) return; // hard block anything unexpected
+  setProfileData(prev => ({
+    ...prev,
+    gender, // store canonical value
+    // No gender_visible!
+  }));
+  navigate("/onboarding/sexuality");
+};
 
   return (
     <div
@@ -51,22 +53,23 @@ export default function GenderPage() {
         </div>
 
         {/* Gender options */}
-        <div className="w-full flex flex-col gap-4 mb-2">
+        <div className="w-full flex flex-col gap-4 mb-2" role="radiogroup" aria-label={t("gender.title")}>
           {GENDERS.map((g) => {
             const selected = gender === g.value;
             return (
-              <button
-                key={g.value}
-                className={`w-full flex items-center justify-between px-6 py-4 rounded-xl shadow-sm border-2 transition
-                  ${
-                    selected
-                      ? "border-[#a55596] bg-[#fae7f6]/80 text-[#6e2263] font-bold scale-105"
-                      : "border-gray-200 bg-gray-50 text-gray-700"
-                  }
-                `}
-                type="button"
-                onClick={() => setGender(g.value)}
-              >
+<button
+  key={g.value}
+  role="radio"
+  aria-checked={selected}
+  className={`w-full flex items-center justify-between px-6 py-4 rounded-xl shadow-sm border-2 transition
+    ${selected
+      ? "border-[#a55596] bg-[#fae7f6]/80 text-[#6e2263] font-bold scale-105"
+      : "border-gray-200 bg-gray-50 text-gray-700"
+    }
+  `}
+  type="button"
+  onClick={() => setGender(g.value)}
+>
                 <span className="text-lg">{t(g.key)}</span>
                 <span
                   className={`flex items-center justify-center w-6 h-6 rounded-full border-2 ${
