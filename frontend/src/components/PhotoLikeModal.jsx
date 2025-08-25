@@ -1,4 +1,3 @@
-// src/components/PhotoLikeModal.jsx
 export default function PhotoLikeModal({
   open,
   photo,
@@ -12,20 +11,34 @@ export default function PhotoLikeModal({
     onSuperlike?.(); // open Gift picker in HomePage
   };
 
+  // helper: check if current media is a video
+  const isVideo = (u) =>
+    /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u || "").split("?")[0]);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-4">
         {/* Name */}
         <div className="text-xl font-bold mb-4">{name}</div>
 
-        {/* Photo */}
-        <div className="w-full aspect-square rounded-2xl overflow-hidden mb-6">
-          <img
-            src={photo}
-            alt=""
-            className="object-cover w-full h-full"
-            draggable={false}
-          />
+        {/* Media */}
+        <div className="w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-black flex items-center justify-center">
+          {isVideo(photo) ? (
+            <video
+              src={photo}
+              className="w-full h-full object-contain"
+              controls
+              autoPlay
+              playsInline
+            />
+          ) : (
+            <img
+              src={photo}
+              alt={`${name}'s media`}
+              className="object-cover w-full h-full"
+              draggable={false}
+            />
+          )}
         </div>
 
         {/* Actions */}
