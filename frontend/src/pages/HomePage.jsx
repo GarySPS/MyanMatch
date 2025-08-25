@@ -961,48 +961,63 @@ setProfiles(sorted);
     return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
   };
 
-// turn objects/paths/urls into displayable URLs (robust bucket detection)
+// --- make HomePage media resolution match UserProfilePage ---
+
+// convert any signed URL -> public URL (bucket is public)
+const signedToPublic = (u) => {
+  const s = String(u || "");
+  const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
+  if (!m) return s;
+  const [, bucket, keyRaw] = m;
+  const key = decodeURIComponent(keyRaw);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(key);
+  return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
+};
+
+// turn objects/paths/urls into displayable URLs (same logic as UserProfilePage)
 const toUrl = (item) => {
   if (!item) return null;
-
   if (typeof item === "object") {
     const u = item.url || item.publicUrl || item.signedUrl;
     if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
     if (item.path) item = item.path;
   }
+  const s = String(item).trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return signedToPublic(s);
 
-  const raw = String(item || "").trim();
-  if (!raw) return null;
-
-  // Already a URL? convert any signed -> public.
-  if (/^https?:\/\//i.test(raw)) return signedToPublic(raw);
-
-  // Storage key. Keep it intact (user folders, etc.)
-  const clean = raw.replace(/^public\//, "");
-
-  // If the path contains "/onboarding/" anywhere, use the onboarding bucket.
-  // Otherwise default to media.
-  const bucket =
-    /(^|\/)onboarding\//i.test(clean) || clean.startsWith("onboarding/")
-      ? "onboarding"
-      : "media";
-
-  const key =
-    bucket === "onboarding"
-      ? clean.replace(/^onboarding\//i, "") // if it *does* start with onboarding/, drop just that prefix
-      : clean.replace(/^media\//i, "");
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(key);
+  const key = s.replace(/^public\//, "").replace(/^media\//, "");
+  const bucket = s.startsWith("onboarding/") ? "onboarding" : "media";
+  const { data } = supabase.storage.from(bucket).getPublicUrl(
+    bucket === "onboarding" ? key.replace(/^onboarding\//, "") : key
+  );
   return data?.publicUrl || null;
 };
 
-  // Prefer persistent storage paths first, then any media URLs/objects
-  const paths  = arr(user.media_paths);
-  const medias = arr(user.media);
-  const allUrls = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
+// gather the same set of possible fields as UserProfilePage
+const arr = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (s.startsWith("[")) { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch {} }
+    if (s.includes(",")) return s.split(",").map(x => x.trim()).filter(Boolean);
+    return [s];
+  }
+  return [v];
+};
 
-// Unified media array (keeps order: photo or video)
-const media = allUrls;
+const rawCandidates = [
+  ...arr(user.media_paths),
+  ...arr(user.media),
+  ...arr(user.photos),
+  ...arr(user.images),
+  ...arr(user.photo_urls),
+  ...arr(user.gallery),
+  user.photo1, user.photo2, user.photo3, user.photo4, user.photo5, user.photo6,
+].filter(Boolean);
+
+const media = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
 
 // ✅ define isVideo here once
 function isVideo(u) {
