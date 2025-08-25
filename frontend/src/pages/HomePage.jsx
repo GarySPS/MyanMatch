@@ -1001,12 +1001,11 @@ const toUrl = (item) => {
   const medias = arr(user.media);
   const allUrls = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
 
-  const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
-
 // Unified media array (keeps order: photo or video)
 const media = allUrls;
 
-const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
+const isVideo = (u) =>
+  /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
 
 function renderMedia(idx) {
   const url = media[idx];
