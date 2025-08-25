@@ -961,32 +961,51 @@ setProfiles(sorted);
     return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
   };
 
-  // turn objects/paths/urls into displayable URLs
-  const toUrl = (item) => {
-    if (!item) return null;
+// turn objects/paths/urls into displayable URLs (robust bucket detection)
+const toUrl = (item) => {
+  if (!item) return null;
 
-    if (typeof item === "object") {
-      const u = item.url || item.publicUrl || item.signedUrl;
-      if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
-      if (item.path) item = item.path;
-    }
+  if (typeof item === "object") {
+    const u = item.url || item.publicUrl || item.signedUrl;
+    if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
+    if (item.path) item = item.path;
+  }
 
-    const s = String(item).trim();
-    if (!s) return null;
+  const raw = String(item || "").trim();
+  if (!raw) return null;
 
-    if (/^https?:\/\//i.test(s)) return signedToPublic(s);
+  // Already a URL? convert any signed -> public.
+  if (/^https?:\/\//i.test(raw)) return signedToPublic(raw);
 
-    // treat as storage key; default bucket is "media"
-    const key = s.replace(/^public\//, "").replace(/^media\//, "");
-    const bucket = s.startsWith("onboarding/") ? "onboarding" : "media";
-    const { data } = supabase.storage.from(bucket).getPublicUrl(key);
-    return data?.publicUrl || null;
-  };
+  // Storage key. Keep it intact (user folders, etc.)
+  const clean = raw.replace(/^public\//, "");
+
+  // If the path contains "/onboarding/" anywhere, use the onboarding bucket.
+  // Otherwise default to media.
+  const bucket =
+    /(^|\/)onboarding\//i.test(clean) || clean.startsWith("onboarding/")
+      ? "onboarding"
+      : "media";
+
+  const key =
+    bucket === "onboarding"
+      ? clean.replace(/^onboarding\//i, "") // if it *does* start with onboarding/, drop just that prefix
+      : clean.replace(/^media\//i, "");
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(key);
+  return data?.publicUrl || null;
+};
 
   // Prefer persistent storage paths first, then any media URLs/objects
   const paths  = arr(user.media_paths);
   const medias = arr(user.media);
-  const photos = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
+  const allUrls = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
+
+  const isImage = (u) => /\.(jpe?g|png|webp|gif|avif)$/i.test(String(u).split("?")[0]);
+  const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
+
+  const photos = allUrls.filter(isImage);
+  const videos = allUrls.filter(isVideo);
 
   // prompts[]
   const prompts = Array.isArray(user.prompts)
@@ -1098,12 +1117,30 @@ setProfiles(sorted);
   const afterGiftSentAdvance = () => setIndex((i) => i + 1);
 
   /* ---------- UI ---------- */
-    function renderPhoto(idx) {
-  const photo = photos[idx];
+function renderPhoto(idx) {
+  const url = photos[idx] || videos[idx]; // try image first; if not, show video in same slot index if you saved that way
+  const isVid = url && /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(url).split("?")[0]);
+
   return (
-    <div key={photo || idx} className="mx-4 relative group">
+    <div key={url || idx} className="mx-4 relative group">
       <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photo} alt={`${name}'s photo ${idx + 1}`} className="w-full h-full object-cover" draggable={false} />
+        {isVid ? (
+          <video
+            src={url}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            controls
+          />
+        ) : (
+          <img
+            src={url}
+            alt={`${name}'s media ${idx + 1}`}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        )}
       </div>
       <button
         onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
