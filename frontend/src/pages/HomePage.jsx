@@ -1001,7 +1001,6 @@ const toUrl = (item) => {
   const medias = arr(user.media);
   const allUrls = [...new Set([...paths, ...medias].map(toUrl).filter(Boolean))];
 
-  const isImage = (u) => /\.(jpe?g|png|webp|gif|avif)$/i.test(String(u).split("?")[0]);
   const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
 
 // Unified media array (keeps order: photo or video)
@@ -1157,44 +1156,6 @@ function renderMedia(idx) {
 
   const afterGiftSentAdvance = () => setIndex((i) => i + 1);
 
-  /* ---------- UI ---------- */
-function renderPhoto(idx) {
-  const url = photos[idx] || videos[idx]; // try image first; if not, show video in same slot index if you saved that way
-  const isVid = url && /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(url).split("?")[0]);
-
-  return (
-    <div key={url || idx} className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        {isVid ? (
-          <video
-            src={url}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            loop
-            controls
-          />
-        ) : (
-          <img
-            src={url}
-            alt={`${name}'s media ${idx + 1}`}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
-        )}
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  );
-}
-
 function renderPrompt(p, idx) {
   return (
     <div key={`prompt-${idx}`} className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
@@ -1341,14 +1302,15 @@ return (
       </div>
 
       {/* MODALS (Your existing modal components are called here) */}
-      <PhotoLikeModal
-        open={showPhotoModal}
-        photo={photos[modalPhotoIdx]}
-        name={name}
-        onClose={() => setShowPhotoModal(false)}
-        onLike={(comment) => { setShowPhotoModal(false); likeOrSuper("like", comment || null); }}
-        onSuperlike={(comment) => { setShowPhotoModal(false); openGiftWithOptionalComment(comment || ""); }}
-      />
+<PhotoLikeModal
+  open={showPhotoModal}
+  photo={media[modalPhotoIdx]}
+  name={name}
+  onClose={() => setShowPhotoModal(false)}
+  onLike={(comment) => { setShowPhotoModal(false); likeOrSuper("like", comment || null); }}
+  onSuperlike={(comment) => { setShowPhotoModal(false); openGiftWithOptionalComment(comment || ""); }}
+/>
+
       <ReportModal
         open={reportOpen}
         onClose={() => setReportOpen(false)}
