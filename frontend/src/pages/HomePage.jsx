@@ -1004,9 +1004,6 @@ const toUrl = (item) => {
 // Unified media array (keeps order: photo or video)
 const media = allUrls;
 
-const isVideo = (u) =>
-  /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
-
 function renderMedia(idx) {
   const url = media[idx];
   if (!url) return null;
