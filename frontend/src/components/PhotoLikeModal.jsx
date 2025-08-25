@@ -4,7 +4,9 @@ export default function PhotoLikeModal({
   name,
   onClose,
   onSuperlike, // SEND GIFT
+  onLike,      // ❤️ LIKE
 }) {
+
   if (!open) return null;
 
   const handleSendGift = () => {
@@ -41,20 +43,27 @@ export default function PhotoLikeModal({
           )}
         </div>
 
-        {/* Actions */}
-        <button
-          className="w-full bg-[#f5e8fa] text-[#a259c3] py-3 rounded-xl font-bold mb-2"
-          onClick={handleSendGift}
-        >
-          🎁 Send Gift
-        </button>
+{/* Actions */}
+<button
+  className="w-full bg-pink-500 text-white py-3 rounded-xl font-bold mb-2"
+  onClick={() => onLike?.()}
+>
+  ❤️ Like
+</button>
 
-        <button
-          className="block w-full text-gray-400 hover:text-gray-700 text-base font-medium"
-          onClick={onClose}
-        >
-          Cancel
-        </button>
+<button
+  className="w-full bg-[#f5e8fa] text-[#a259c3] py-3 rounded-xl font-bold mb-2"
+  onClick={handleSendGift}
+>
+  🎁 Send Gift
+</button>
+
+<button
+  className="block w-full text-gray-400 hover:text-gray-700 text-base font-medium"
+  onClick={onClose}
+>
+  Cancel
+</button>
       </div>
     </div>
   );
