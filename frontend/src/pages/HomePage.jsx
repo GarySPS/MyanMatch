@@ -1004,8 +1004,49 @@ const toUrl = (item) => {
   const isImage = (u) => /\.(jpe?g|png|webp|gif|avif)$/i.test(String(u).split("?")[0]);
   const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
 
-  const photos = allUrls.filter(isImage);
-  const videos = allUrls.filter(isVideo);
+// Unified media array (keeps order: photo or video)
+const media = allUrls;
+
+const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
+
+function renderMedia(idx) {
+  const url = media[idx];
+  if (!url) return null;
+  const isVid = isVideo(url);
+
+  return (
+    <div key={url || idx} className="mx-4 relative group">
+      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
+        {isVid ? (
+          <video
+            src={url}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            controls
+          />
+        ) : (
+          <img
+            src={url}
+            alt={`${name}'s media ${idx + 1}`}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        )}
+      </div>
+      <button
+        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
+        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
+                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
+        aria-label={t("home.btn.likePhoto")}
+      >
+        <FaHeart size={20} />
+      </button>
+    </div>
+  );
+}
+
 
   // prompts[]
   const prompts = Array.isArray(user.prompts)
@@ -1212,22 +1253,8 @@ return (
       {/* CONTENT SCROLL — with adjusted padding for new header */}
      <div className="pt-[calc(env(safe-area-inset-top)+88px)] pb-[calc(env(safe-area-inset-bottom)+210px)] space-y-4">
 
-{/* 1) First photo */}
-{photos[0] && (
-  <div key={photos[0]} className="relative group">
-    <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-      <img src={photos[0]} alt={`${name}'s photo 1`} className="w-full h-full object-cover" draggable={false} />
-    </div>
-    <button
-      onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(0); }}
-      className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                 hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-      aria-label={t("home.btn.likePhoto")}
-    >
-      <FaHeart size={20} />
-    </button>
-  </div>
-)}
+{/* Unified media order: photos or videos */}
+{media[0] && renderMedia(0)}
 
 {/* 2) About card */}
 <div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
@@ -1252,29 +1279,15 @@ return (
   </ul>
 </div>
 
-{/* 3) Photo 2 */}
-{photos[1] && renderPhoto(1)}
-{/* 4) Photo 3 */}
-{photos[2] && renderPhoto(2)}
-
-{/* 5) Prompt 1 */}
+{/* Continue with rest of media + prompts */}
+{media[1] && renderMedia(1)}
+{media[2] && renderMedia(2)}
 {prompts[0] && prompts[0].prompt && prompts[0].answer && renderPrompt(prompts[0], 0)}
-
-{/* 6) Photo 4 */}
-{photos[3] && renderPhoto(3)}
-
-{/* 7) Prompt 2 */}
+{media[3] && renderMedia(3)}
 {prompts[1] && prompts[1].prompt && prompts[1].answer && renderPrompt(prompts[1], 1)}
-
-{/* 8) Photo 5 */}
-{photos[4] && renderPhoto(4)}
-
-{/* 9) Prompt 3 */}
+{media[4] && renderMedia(4)}
 {prompts[2] && prompts[2].prompt && prompts[2].answer && renderPrompt(prompts[2], 2)}
-
-{/* 11) Photo 6 */}
-{photos[5] && renderPhoto(5)}
-
+{media[5] && renderMedia(5)}
 
         {/* 4) Voice Prompt */}
         {voiceUrl && (
