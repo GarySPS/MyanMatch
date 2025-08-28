@@ -2,6 +2,40 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+// Ensure profile row exists + cache small user object
+async function ensureProfileAndCache() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const authId = user?.id;
+  if (!authId) return null;
+
+  await supabase
+    .from("profiles")
+    .upsert(
+      { user_id: authId, onboarding_complete: false },
+      { onConflict: "user_id" }
+    );
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+    .eq("user_id", authId)
+    .single();
+
+  const cache = {
+    id: authId,
+    user_id: authId,
+    first_name: prof?.first_name || null,
+    last_name: prof?.last_name || null,
+    avatar_url: prof?.avatar_url || null,
+    onboarding_complete: !!prof?.onboarding_complete,
+    is_admin: !!prof?.is_admin,
+  };
+  localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+
+  return prof;
+}
+
+
 /* --- Pretty toast (optional) --- */
 function MMToast({ open, type = "error", text = "", onClose }) {
   if (!open) return null;

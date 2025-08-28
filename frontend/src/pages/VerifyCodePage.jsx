@@ -4,6 +4,39 @@ import ReactCodesInput from "react-codes-input";
 import "react-codes-input/lib/react-codes-input.min.css";
 import { supabase } from "../supabaseClient";
 
+// Ensure profile row exists + cache small user object
+async function ensureProfileAndCache() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const authId = user?.id;
+  if (!authId) return null;
+
+  await supabase
+    .from("profiles")
+    .upsert(
+      { user_id: authId, onboarding_complete: false },
+      { onConflict: "user_id" }
+    );
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+    .eq("user_id", authId)
+    .single();
+
+  const cache = {
+    id: authId,
+    user_id: authId,
+    first_name: prof?.first_name || null,
+    last_name: prof?.last_name || null,
+    avatar_url: prof?.avatar_url || null,
+    onboarding_complete: !!prof?.onboarding_complete,
+    is_admin: !!prof?.is_admin,
+  };
+  localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+
+  return prof;
+}
+
 export default function VerifyCodePage() {
   const pinWrapperRef = useRef(null);
   const [pin, setPin] = useState("");
@@ -46,42 +79,31 @@ export default function VerifyCodePage() {
     } catch {}
   };
 
-  const handleConfirm = async () => {
-    if (pin.length !== 6 || loading) return;
-    setLoading(true);
-    setErrorMsg("");
+const handleConfirm = async () => {
+  if (pin.length !== 6 || loading) return;
+  setLoading(true);
+  setErrorMsg("");
 
-    try {
-      // For password sign-up email confirmation use type: 'signup'
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: pin,
-        type: flow === "signup" ? "signup" : "email",
-      });
-      if (error) throw error;
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: pin,
+      type: flow === "signup" ? "signup" : "email",
+    });
+    if (error) throw error;
 
-      const user = data?.session?.user;
-      if (!user) throw new Error("No session returned. Try again.");
+    const prof = await ensureProfileAndCache();
 
-      try {
-        await ensureProfile(user.id);
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("onboarding_complete, is_admin")
-          .eq("user_id", user.id)
-          .single();
+    if (prof?.is_admin) return navigate("/admin", { replace: true });
+    if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
+    return navigate("/onboarding/terms", { replace: true });
 
-        if (prof?.is_admin) return navigate("/admin", { replace: true });
-        if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-      } catch {}
-
-      navigate("/onboarding/terms", { replace: true });
-    } catch (err) {
-      setErrorMsg(err?.message || "Invalid code. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    setErrorMsg(err?.message || "Invalid code. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResend = async () => {
     setResending(true);
