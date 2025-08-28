@@ -17,7 +17,7 @@ const safeExt  = (m="") => (m.split("/")[1]||"webm").split(";")[0].replace(/^x-/
 
 router.post("/onboarding/voice", upload.single("file"), async (req, res) => {
   try {
-    const userId = String(req.body.user_id || "").trim();
+    const userId = String((req.auth?.user?.id) || req.body.user_id || "").trim();
     const prompt = String(req.body.prompt || "");
     const duration = req.body.duration ? Number(req.body.duration) : null;
     if (!userId) return res.status(400).send("user_id required");

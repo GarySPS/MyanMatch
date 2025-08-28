@@ -16,13 +16,17 @@ export default function VerifyCodePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email || "";
-  const phone = location.state?.phone || "";
-  const channel = location.state?.channel || (email ? "email" : "phone"); // fallback
+  // "signup" expected for this flow (email+password). We still default safe.
+  const flow = location.state?.flow || "signup";
+
+  useEffect(() => {
+    if (!email) navigate("/SignInPage", { replace: true });
+  }, [email, navigate]);
 
   useEffect(() => {
     if (timer > 0) {
-      const interval = setInterval(() => setTimer((t) => t - 1), 1000);
-      return () => clearInterval(interval);
+      const id = setInterval(() => setTimer((t) => t - 1), 1000);
+      return () => clearInterval(id);
     }
   }, [timer]);
 
@@ -36,11 +40,7 @@ export default function VerifyCodePage() {
         .single();
       if (!profile) {
         await supabase.from("profiles").insert([
-          {
-            user_id: userId,
-            onboarding_complete: false,
-            created_at: new Date().toISOString(),
-          },
+          { user_id: userId, onboarding_complete: false, created_at: new Date().toISOString() },
         ]);
       }
     } catch {}
@@ -52,49 +52,34 @@ export default function VerifyCodePage() {
     setErrorMsg("");
 
     try {
-      const url =
-        channel === "phone" ? "/api/auth/verify-otp-phone" : "/api/auth/verify-otp";
-
-      const payload =
-        channel === "phone" ? { phone, otp_code: pin } : { email, otp_code: pin };
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // For password sign-up email confirmation use type: 'signup'
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: pin,
+        type: flow === "signup" ? "signup" : "email",
       });
-      const data = await res.json();
-      setLoading(false);
+      if (error) throw error;
 
-      if (data.user) {
-        localStorage.setItem("myanmatch_user", JSON.stringify(data.user));
-      }
-
-      if (!res.ok) {
-        // Already verified shortcut
-        if (data.error === "Already verified." && data.user) {
-          try {
-            await ensureProfile(data.user.id || data.user.user_id);
-          } catch {}
-          navigate("/onboarding/terms");
-          return;
-        }
-        setErrorMsg(data.error || "Invalid code. Try again.");
-        return;
-      }
+      const user = data?.session?.user;
+      if (!user) throw new Error("No session returned. Try again.");
 
       try {
-        await ensureProfile(data.user?.id || data.user?.user_id);
+        await ensureProfile(user.id);
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("onboarding_complete, is_admin")
+          .eq("user_id", user.id)
+          .single();
+
+        if (prof?.is_admin) return navigate("/admin", { replace: true });
+        if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
       } catch {}
 
-      if (data.user && data.user.onboarding_complete) {
-        navigate("/HomePage");
-      } else {
-        navigate("/onboarding/terms");
-      }
+      navigate("/onboarding/terms", { replace: true });
     } catch (err) {
+      setErrorMsg(err?.message || "Invalid code. Try again.");
+    } finally {
       setLoading(false);
-      setErrorMsg("Network error. Please try again.");
     }
   };
 
@@ -104,34 +89,20 @@ export default function VerifyCodePage() {
     setErrorMsg("");
     setTimer(30);
     try {
-      const url =
-        channel === "phone" ? "/api/auth/resend-otp-phone" : "/api/auth/resend-otp";
-      const payload = channel === "phone" ? { phone } : { email };
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      setResending(false);
-      if (!res.ok) {
-        setErrorMsg(data.error || "Failed to resend code.");
+      if (flow === "signup") {
+        await supabase.auth.resend({ type: "signup", email });
       } else {
-        setResentMsg(
-          channel === "phone"
-            ? "A new code has been sent to your phone."
-            : "A new code has been sent to your email."
-        );
+        await supabase.auth.resend({ type: "magiclink", email });
       }
+      setResentMsg("A new code has been sent to your email.");
     } catch (err) {
+      setErrorMsg(err?.message || "Failed to resend code.");
+    } finally {
       setResending(false);
-      setErrorMsg("Network error. Please try again.");
     }
   };
 
-  const targetText =
-    channel === "phone" ? `We sent a code to ${phone || "your phone"}` : "We sent you a code";
+  const targetText = `We sent a code to ${email}`;
 
   return (
     <div
@@ -150,6 +121,7 @@ export default function VerifyCodePage() {
           Enter the 6-digit verification code
           <p>ရရှိလာသောကုဒ်-၆ခုကိုဖြည့်ပါ</p>
         </p>
+
         <ReactCodesInput
           classNameComponent="react-codes-premium !h-20 mb-8"
           classNameWrapper="flex gap-3 justify-center"
@@ -174,6 +146,7 @@ export default function VerifyCodePage() {
             if (clean !== pin) setPin(clean);
           }}
         />
+
         <button
           className={`w-full py-3 rounded-full bg-[#893086] text-white text-lg font-bold mb-2 transition ${
             pin.length === 6 && !loading
@@ -185,12 +158,10 @@ export default function VerifyCodePage() {
         >
           {loading ? "Verifying..." : "Confirm"}
         </button>
-        {errorMsg && (
-          <div className="text-red-500 text-center mb-3">{errorMsg}</div>
-        )}
-        {resentMsg && (
-          <div className="text-green-600 text-center mb-3">{resentMsg}</div>
-        )}
+
+        {errorMsg && <div className="text-red-500 text-center mb-3">{errorMsg}</div>}
+        {resentMsg && <div className="text-green-600 text-center mb-3">{resentMsg}</div>}
+
         <div className="mt-3 text-sm text-gray-500 text-center">
           Didn’t get the code?{" "}
           <span
@@ -199,11 +170,7 @@ export default function VerifyCodePage() {
             }`}
             onClick={timer === 0 && !resending ? handleResend : undefined}
           >
-            {resending
-              ? "Resending..."
-              : timer > 0
-              ? `Resend (${timer}s)`
-              : "Resend"}
+            {resending ? "Resending..." : timer > 0 ? `Resend (${timer}s)` : "Resend"}
           </span>
         </div>
       </div>

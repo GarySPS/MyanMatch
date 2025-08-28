@@ -1,64 +1,115 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
+
+/* --- Pretty toast (optional) --- */
+function MMToast({ open, type = "error", text = "", onClose }) {
+  if (!open) return null;
+  const isErr = type === "error";
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[80] bottom-[calc(env(safe-area-inset-bottom)+110px)]"
+      role="status"
+      aria-live="polite"
+      onClick={onClose}
+    >
+      <div
+        className={`px-4 py-3 rounded-2xl shadow-2xl border ${
+          isErr
+            ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
+            : "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white border-white/20"
+        }`}
+      >
+        <div className="font-semibold text-sm">{text}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function SignUpPage() {
-  const [mode, setMode] = useState("email"); // 'email' | 'phone'
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(""); // Myanmar local like 09xxxxxxxxx
-  const [password, setPassword] = useState("");
-  const [verifyPassword, setVerifyPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
 
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setErrorMsg("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
 
-    if (password !== verifyPassword) {
-      setErrorMsg("Passwords do not match.");
-      return;
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  // toast
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastType, setToastType] = useState("error");
+  const [toastText, setToastText] = useState("");
+  function showToast(text, type = "error") {
+    setToastText(text);
+    setToastType(type);
+    setToastOpen(true);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
+  }
+
+  // If a session exists, route forward
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
+      if (session?.user) {
+        try {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("onboarding_complete, is_admin")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (prof?.is_admin) return navigate("/admin", { replace: true });
+          if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
+          return navigate("/onboarding/terms", { replace: true });
+        } catch {
+          return navigate("/onboarding/terms", { replace: true });
+        }
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
+
+  async function handleSignUp(e) {
+    e.preventDefault();
+    setErr("");
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      const m = "Please enter a valid email.";
+      setErr(m); showToast(m, "error"); return;
+    }
+    if (!password || password.length < 6) {
+      const m = "Password must be at least 6 characters.";
+      setErr(m); showToast(m, "error"); return;
+    }
+    if (password !== confirm) {
+      const m = "Passwords do not match.";
+      setErr(m); showToast(m, "error"); return;
     }
 
     setLoading(true);
+    // 1) Create account with email+password
+    const { error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    });
 
-    try {
-      const body = {
-        password,
-        username: "user" + Math.floor(Math.random() * 1000000),
-      };
-
-      let url = "/api/auth/register";
-      if (mode === "email") {
-        body.email = email;
-      } else {
-        url = "/api/auth/register-phone";
-        body.phone = phone;
-      }
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+    if (signUpErr) {
+      setErr(signUpErr.message);
+      showToast(signUpErr.message, "error");
       setLoading(false);
-
-      if (!res.ok) {
-        setErrorMsg(data.error || "Failed to send OTP. Try again.");
-      } else {
-        localStorage.removeItem("myanmatch_user");
-        if (mode === "email") {
-          navigate("/VerifyCodePage", { state: { email, channel: "email" } });
-        } else {
-          navigate("/VerifyCodePage", { state: { phone, channel: "phone" } });
-        }
-      }
-    } catch (err) {
-      setLoading(false);
-      setErrorMsg("Network error. Please try again.");
+      return;
     }
-  };
+
+    // 2) Send/ensure a SIGNUP OTP (6-digit) and go to verify page
+    try {
+      await supabase.auth.resend({ type: "signup", email });
+    } catch { /* best effort; some projects auto-send already */ }
+
+    setLoading(false);
+    navigate("/VerifyCodePage", { state: { email, flow: "signup" } });
+  }
 
   return (
     <div
@@ -68,84 +119,57 @@ export default function SignUpPage() {
         backgroundColor: "#21101e",
       }}
     >
-      <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
+      <div className="absolute inset-0 bg-black/40 z-0" />
+
       <div className="relative z-10 w-full max-w-sm mx-auto rounded-3xl bg-white/90 px-7 py-10 flex flex-col items-center shadow-2xl">
-<h2 className="text-2xl font-bold text-[#893086] text-center">
-  Create your account
-</h2>
-<p className="text-base font-medium text-gray-700 mb-4 text-center">
-  အကောင့်အသစ်ဖောက်မည်
-</p>
+        <h2 className="text-2xl font-bold text-[#893086] text-center">Create your account</h2>
+        <p className="text-base font-medium text-gray-700 mb-6 text-center">အကောင့်အသစ်ဖောက်မည်</p>
 
-        {/* Toggle: Email / Phone */}
-        <div className="flex w-full mb-5 rounded-xl overflow-hidden border border-gray-200">
-          <button
-            className={`flex-1 py-2 text-sm font-semibold ${
-              mode === "email" ? "bg-[#893086] text-white" : "bg-white"
-            }`}
-            onClick={() => setMode("email")}
-            type="button"
-          >
-            Gmail
-          </button>
-          <button
-            className={`flex-1 py-2 text-sm font-semibold ${
-              mode === "phone" ? "bg-[#893086] text-white" : "bg-white"
-            }`}
-            onClick={() => setMode("phone")}
-            type="button"
-          >
-            Phone
-          </button>
-        </div>
+        <form onSubmit={handleSignUp} className="w-full">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input
+            type="email"
+            className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value.trim())}
+            required
+          />
 
-        <form className="w-full" onSubmit={handleSignUp}>
-          {mode === "email" ? (
-            <input
-              type="email"
-              className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-              placeholder="Gmail ထည့်ပါ"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-          ) : (
-            <input
-              type="tel"
-              inputMode="numeric"
-              className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-              placeholder="Phone နာမ်ပတ် (09xxxxxxxxx)"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              required
-            />
-          )}
-
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Password <span className="text-gray-400">(ပက်စဝေါ့)</span>
+          </label>
           <input
             type="password"
             className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="Password ထည့်ပါ"
+            placeholder="Enter password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Verify password <span className="text-gray-400">(အတည်ပြုပါ)</span>
+          </label>
           <input
             type="password"
             className="mb-6 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="Verify Password အတည်ပြုပါ"
-            value={verifyPassword}
-            onChange={e => setVerifyPassword(e.target.value)}
+            placeholder="Re-enter password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
             required
           />
+
           <button
-            className="w-full py-3 rounded-full bg-[#893086] text-white text-lg font-semibold mb-2 transition hover:bg-[#a16bbf] shadow-md"
+            className={`w-full py-3 rounded-full bg-[#893086] text-white text-lg font-semibold transition ${
+              loading ? "opacity-60" : "hover:bg-[#a16bbf]"
+            } shadow-md`}
             disabled={loading}
           >
-            {loading ? "Creating account..." : "Continue"}
+            {loading ? "Creating account..." : "Create account (အကောင့်ဖောက်)"}
           </button>
-          {errorMsg && (
-            <div className="text-red-500 text-center mb-3">{errorMsg}</div>
-          )}
+
+          {err && <div className="text-red-500 text-center mt-3">{err}</div>}
         </form>
 
         <div className="mt-2 text-center text-base">
@@ -160,15 +184,12 @@ export default function SignUpPage() {
 
         <div className="mt-4 text-xs text-gray-500 text-center">
           By signing up, you agree to the{" "}
-          <a href="/TermsPage" className="underline hover:text-[#893086]">
-            Terms of Use
-          </a>
-          ,{" "}
-          <a href="/PrivacyPage" className="underline hover:text-[#893086]">
-            Privacy Notice
-          </a>
-          , and <span className="underline">Cookie Notice</span>.
+          <a href="/TermsPage" className="underline hover:text-[#893086]">Terms of Use</a>,{" "}
+          <a href="/PrivacyPage" className="underline hover:text-[#893086]">Privacy Notice</a>, and{" "}
+          <span className="underline">Cookie Notice</span>.
         </div>
+
+        <MMToast open={toastOpen} type={toastType} text={toastText} onClose={() => setToastOpen(false)} />
       </div>
     </div>
   );

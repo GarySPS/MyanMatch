@@ -940,29 +940,6 @@ setProfiles(sorted);
   const verified = !!user.is_verified;
   const ageDisplay = getAge(user);
 
-
-  /* ---------- media & prompts parsing (match UserProfilePage) ---------- */
-  const arr = (v) => {
-    if (Array.isArray(v)) return v;
-    if (typeof v === "string" && v.trim().startsWith("[")) {
-      try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch {}
-    }
-    return v ? [v] : [];
-  };
-
-  // convert any signed URL -> public URL (bucket is public)
-  const signedToPublic = (u) => {
-    const s = String(u);
-    const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
-    if (!m) return s;
-    const [, bucket, keyRaw] = m;
-    const key = decodeURIComponent(keyRaw);
-    const { data } = supabase.storage.from(bucket).getPublicUrl(key);
-    return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
-  };
-
-// --- make HomePage media resolution match UserProfilePage ---
-
 // convert any signed URL -> public URL (bucket is public)
 const signedToPublic = (u) => {
   const s = String(u || "");

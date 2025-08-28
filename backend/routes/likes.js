@@ -4,10 +4,17 @@ const router = express.Router();
 
 // POST /api/likes
 router.post('/', async (req, res) => {
-  const { from_user_id, to_user_id, comment, type } = req.body;
-  if (!from_user_id || !to_user_id) {
-    return res.status(400).json({ error: "Missing from_user_id or to_user_id" });
-  }
+const { to_user_id, comment, type } = req.body;
+const fromAuth = req.auth?.user?.id || null;
+const fromBody = req.body?.from_user_id || null;
+const from_user_id = fromAuth || fromBody;
+
+if (!from_user_id || !to_user_id) {
+  return res.status(400).json({ error: "Missing from_user_id or to_user_id" });
+}
+if (fromAuth && fromBody && fromAuth !== fromBody) {
+  return res.status(403).json({ error: "forbidden_mismatch_user" });
+}
 
   // Insert like into Supabase
   const { data, error } = await req.supabase

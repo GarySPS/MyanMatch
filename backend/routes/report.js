@@ -1,39 +1,15 @@
 // backend/routes/report.js
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  { auth: { persistSession: false } }
-);
 
-// Simple MyanMatch auth for end‑users: checks X-User-Id exists in users table
-async function requireMyanMatchAuth(req, res, next) {
-  try {
-    const uid = req.header('X-User-Id');
-    if (!uid) return res.status(401).json({ error: 'missing_user_id' });
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', uid)
-      .single();
-
-    if (error || !data) return res.status(401).json({ error: 'invalid_user' });
-
-    req.user = { id: uid };
-    next();
-  } catch (e) {
-    console.error('requireMyanMatchAuth error:', e);
-    res.status(401).json({ error: 'auth_error' });
-  }
-}
-
+// use req.supabase and req.auth (from middleware/auth.js)
 /* -------------------- PUBLIC (end-user) -------------------- */
 /** POST /api/report { reported_user_id, reason, details? } */
-router.post('/report', requireMyanMatchAuth, async (req, res) => {
+ router.post('/report', async (req, res) => {
+      if (!req.auth?.user?.id) return res.status(401).json({ error: 'unauthorized' });
+    const supabase = req.supabase;
+    const reporterId = req.auth.user.id;
   try {
     const { reported_user_id, reason, details } = req.body || {};
     if (!reported_user_id || !reason) {
@@ -41,7 +17,7 @@ router.post('/report', requireMyanMatchAuth, async (req, res) => {
     }
 
     const insertRow = {
-      reporter_id: req.user.id,
+      reporter_id: reporterId,
       reported_user_id,
       reason,
       details: details?.trim() || null,
@@ -62,7 +38,7 @@ router.post('/report', requireMyanMatchAuth, async (req, res) => {
 /** GET /api/admin/reports -> { reports: [...] } */
 router.get('/admin/reports', async (_req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('reports')
       .select('id, reporter_id, reported_user_id, reason, details, status, created_at')
       .order('created_at', { ascending: false });
@@ -82,7 +58,7 @@ router.post('/admin/block_user', async (req, res) => {
     if (!user_id) return res.status(400).json({ error: 'user_id_required' });
 
     // Upsert guarantees the row exists and sets blocked=true
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('profiles')
       .upsert({ user_id, blocked: true }, { onConflict: 'user_id' })
       .select('user_id, blocked')
@@ -103,7 +79,7 @@ router.post('/admin/release_user', async (req, res) => {
     if (!user_id) return res.status(400).json({ error: 'user_id_required' });
 
     // Upsert guarantees the row exists and sets blocked=false
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('profiles')
       .upsert({ user_id, blocked: false }, { onConflict: 'user_id' })
       .select('user_id, blocked')
