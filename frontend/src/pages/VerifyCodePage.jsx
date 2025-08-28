@@ -1,8 +1,30 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import ReactCodesInput from "react-codes-input";
-import "react-codes-input/lib/react-codes-input.min.css";
 import { supabase } from "../supabaseClient";
+
+/* --- tiny toast --- */
+function MMToast({ open, type = "error", text = "", onClose }) {
+  if (!open) return null;
+  const isErr = type === "error";
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[80] bottom-[calc(env(safe-area-inset-bottom)+110px)]"
+      role="status"
+      aria-live="polite"
+      onClick={onClose}
+    >
+      <div
+        className={`px-4 py-3 rounded-2xl shadow-2xl border ${
+          isErr
+            ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
+            : "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white border-white/20"
+        }`}
+      >
+        <div className="font-semibold text-sm">{text}</div>
+      </div>
+    </div>
+  );
+}
 
 // Ensure profile row exists + cache small user object
 async function ensureProfileAndCache() {
@@ -38,24 +60,28 @@ async function ensureProfileAndCache() {
 }
 
 export default function VerifyCodePage() {
-  const pinWrapperRef = useRef(null);
-  const [pin, setPin] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [resending, setResending] = useState(false);
-  const [resentMsg, setResentMsg] = useState("");
-  const [timer, setTimer] = useState(0);
-
   const navigate = useNavigate();
-  const location = useLocation();
-  const email = location.state?.email || "";
-  // "signup" expected for this flow (email+password). We still default safe.
-  const flow = location.state?.flow || "signup";
+  const { state } = useLocation();
+  const email = state?.email || "";
 
+  const [resending, setResending] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [toast, setToast] = useState({ open: false, type: "success", text: "" });
+
+  // If user already signed in (after clicking email link), route forward
   useEffect(() => {
-    if (!email) navigate("/SignInPage", { replace: true });
-  }, [email, navigate]);
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
+      if (session?.user) {
+        const prof = await ensureProfileAndCache();
+        if (prof?.is_admin) return navigate("/admin", { replace: true });
+        if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
+        return navigate("/onboarding/terms", { replace: true });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
 
+  // simple countdown for resend
   useEffect(() => {
     if (timer > 0) {
       const id = setInterval(() => setTimer((t) => t - 1), 1000);
@@ -63,68 +89,20 @@ export default function VerifyCodePage() {
     }
   }, [timer]);
 
-  const ensureProfile = async (userId) => {
-    if (!userId) return;
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("user_id", userId)
-        .single();
-      if (!profile) {
-        await supabase.from("profiles").insert([
-          { user_id: userId, onboarding_complete: false, created_at: new Date().toISOString() },
-        ]);
-      }
-    } catch {}
-  };
-
-const handleConfirm = async () => {
-  if (pin.length !== 6 || loading) return;
-  setLoading(true);
-  setErrorMsg("");
-
-  try {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: pin,
-      type: flow === "signup" ? "signup" : "email",
-    });
-    if (error) throw error;
-
-    const prof = await ensureProfileAndCache();
-
-    if (prof?.is_admin) return navigate("/admin", { replace: true });
-    if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-    return navigate("/onboarding/terms", { replace: true });
-
-  } catch (err) {
-    setErrorMsg(err?.message || "Invalid code. Try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleResend = async () => {
+  const resendLink = async () => {
+    if (!email) return;
     setResending(true);
-    setResentMsg("");
-    setErrorMsg("");
     setTimer(30);
     try {
-      if (flow === "signup") {
-        await supabase.auth.resend({ type: "signup", email });
-      } else {
-        await supabase.auth.resend({ type: "magiclink", email });
-      }
-      setResentMsg("A new code has been sent to your email.");
-    } catch (err) {
-      setErrorMsg(err?.message || "Failed to resend code.");
+      await supabase.auth.resend({ type: "signup", email });
+      setToast({ open: true, type: "success", text: "Confirmation link sent again." });
+    } catch (e) {
+      setToast({ open: true, type: "error", text: e?.message || "Failed to resend." });
     } finally {
+      setTimeout(() => setToast((t) => ({ ...t, open: false })), 2200);
       setResending(false);
     }
   };
-
-  const targetText = `We sent a code to ${email}`;
 
   return (
     <div
@@ -134,68 +112,44 @@ const handleConfirm = async () => {
         backgroundColor: "#21101e",
       }}
     >
-      <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
-      <div className="relative z-10 w-full max-w-sm mx-auto rounded-[2.2rem] bg-white/80 backdrop-blur-[7px] px-9 py-12 flex flex-col items-center shadow-2xl border-[1.5px] border-[#ffffff33]">
-        <h2 className="text-2xl font-extrabold text-[#893086] mb-1 text-center tracking-tight drop-shadow">
-          {targetText}
+      <div className="absolute inset-0 bg-black/40 z-0" />
+      <div className="relative z-10 w-full max-w-sm mx-auto rounded-[2.2rem] bg-white/85 backdrop-blur px-9 py-12 flex flex-col items-center shadow-2xl border border-white/30">
+        <h2 className="text-2xl font-extrabold text-[#893086] text-center mb-2">
+          Check your email
         </h2>
-        <p className="text-base text-gray-700/90 text-center mb-7 font-medium">
-          Enter the 6-digit verification code
-          <p>ရရှိလာသောကုဒ်-၆ခုကိုဖြည့်ပါ</p>
+        <p className="text-center text-gray-700 mb-6">
+          We sent a <span className="font-semibold">confirmation link</span> to<br />
+          <span className="font-bold">{email || "your email"}</span>
         </p>
 
-        <ReactCodesInput
-          classNameComponent="react-codes-premium !h-20 mb-8"
-          classNameWrapper="flex gap-3 justify-center"
-          classNameCodeWrapper="!w-14 !h-16 !flex-none !rounded-2xl !border-2 !border-[#e9e0f4] !bg-white/90 shadow-md !transition-all !duration-150 focus-within:!border-[#893086]"
-          classNameEnteredValue="!text-3xl font-bold text-[#893086] tracking-widest text-center"
-          classNameCode="!border-0 !bg-transparent"
-          classNameCodeWrapperFocus="!border-[#893086] !shadow-lg"
-          initialFocus={true}
-          wrapperRef={pinWrapperRef}
-          placeholder="000000"
-          id="pin"
-          codeLength={6}
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          hide={false}
-          onChange={(val) => {
-            const clean = (val || "").replace(/\D/g, "").slice(0, 6);
-            if (clean !== pin) setPin(clean);
-          }}
-        />
+        <div className="text-sm text-gray-600 space-y-2 mb-8 text-center">
+          <p>Open the email and tap the link to confirm.</p>
+          <p>After confirming, you’ll return here automatically.</p>
+        </div>
 
         <button
-          className={`w-full py-3 rounded-full bg-[#893086] text-white text-lg font-bold mb-2 transition ${
-            pin.length === 6 && !loading
-              ? "hover:bg-[#a16bbf] cursor-pointer"
-              : "opacity-50 cursor-not-allowed"
-          } shadow-lg`}
-          onClick={handleConfirm}
-          disabled={pin.length !== 6 || loading}
+          onClick={timer === 0 && !resending ? resendLink : undefined}
+          className={`w-full py-3 rounded-full bg-[#893086] text-white text-lg font-bold transition ${
+            timer === 0 && !resending ? "hover:bg-[#a16bbf]" : "opacity-50 cursor-not-allowed"
+          }`}
         >
-          {loading ? "Verifying..." : "Confirm"}
+          {resending ? "Resending..." : timer > 0 ? `Resend link (${timer}s)` : "Resend link"}
         </button>
 
-        {errorMsg && <div className="text-red-500 text-center mb-3">{errorMsg}</div>}
-        {resentMsg && <div className="text-green-600 text-center mb-3">{resentMsg}</div>}
-
-        <div className="mt-3 text-sm text-gray-500 text-center">
-          Didn’t get the code?{" "}
-          <span
-            className={`text-[#893086] font-semibold cursor-pointer hover:underline transition ${
-              resending || timer > 0 ? "opacity-40 pointer-events-none" : ""
-            }`}
-            onClick={timer === 0 && !resending ? handleResend : undefined}
-          >
-            {resending ? "Resending..." : timer > 0 ? `Resend (${timer}s)` : "Resend"}
-          </span>
-        </div>
+        <button
+          onClick={() => navigate("/SignInPage")}
+          className="mt-3 text-[#893086] underline font-medium"
+        >
+          Use a different email
+        </button>
       </div>
+
+      <MMToast
+        open={toast.open}
+        type={toast.type}
+        text={toast.text}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+      />
     </div>
   );
 }

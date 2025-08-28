@@ -104,46 +104,43 @@ export default function SignUpPage() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  async function handleSignUp(e) {
-    e.preventDefault();
-    setErr("");
+async function handleSignUp(e) {
+  e.preventDefault();
+  setErr("");
 
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      const m = "Please enter a valid email.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!password || password.length < 6) {
-      const m = "Password must be at least 6 characters.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (password !== confirm) {
-      const m = "Passwords do not match.";
-      setErr(m); showToast(m, "error"); return;
-    }
-
-    setLoading(true);
-    // 1) Create account with email+password
-    const { error: signUpErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-
-    if (signUpErr) {
-      setErr(signUpErr.message);
-      showToast(signUpErr.message, "error");
-      setLoading(false);
-      return;
-    }
-
-    // 2) Send/ensure a SIGNUP OTP (6-digit) and go to verify page
-    try {
-      await supabase.auth.resend({ type: "signup", email });
-    } catch { /* best effort; some projects auto-send already */ }
-
-    setLoading(false);
-    navigate("/VerifyCodePage", { state: { email, flow: "signup" } });
+  if (!email || !/\S+@\S+\.\S+/.test(email)) {
+    const m = "Please enter a valid email.";
+    setErr(m); showToast(m, "error"); return;
   }
+  if (!password || password.length < 6) {
+    const m = "Password must be at least 6 characters.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (password !== confirm) {
+    const m = "Passwords do not match.";
+    setErr(m); showToast(m, "error"); return;
+  }
+
+  setLoading(true);
+
+  // Create the account; Supabase will email a CONFIRMATION LINK (no 6-digit code).
+  const { error: signUpErr } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: window.location.origin } // back to your app
+  });
+
+  if (signUpErr) {
+    setErr(signUpErr.message);
+    showToast(signUpErr.message, "error");
+    setLoading(false);
+    return;
+  }
+
+  setLoading(false);
+  // Go to the “check your email” screen
+  navigate("/VerifyCodePage", { state: { email } });
+}
 
   return (
     <div
