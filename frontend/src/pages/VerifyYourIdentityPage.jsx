@@ -176,23 +176,35 @@ export default function VerifyYourIdentityPage() {
     (async () => {
       if (!myId) return;
 
-      const [uRes, pRes, kycRes] = await Promise.all([
-        supabase.from("users").select("id, username, kyc_status, verified, verified_at, last_kyc_request_id").eq("id", myId).maybeSingle(),
-        supabase.from("profiles").select("user_id, media, avatar_url, avatar_path, is_verified").eq("user_id", myId).maybeSingle(),
-        supabase.from("kyc_requests").select("id,status,notes,created_at").eq("user_id", myId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      ]);
+const [pRes, kycRes] = await Promise.all([
+  supabase
+    .from("profiles")
+    .select("user_id, username, kyc_status, verified, verified_at, last_kyc_request_id, media, avatar_url, avatar_path, is_verified")
+    .eq("user_id", myId)
+    .maybeSingle(),
+  supabase
+    .from("kyc_requests")
+    .select("id,status,notes,created_at")
+    .eq("user_id", myId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle(),
+]);
 
-      if (!alive) return;
+const p = pRes.data || {};
+setProfileRow(p);
 
-      const u = uRes.data || {};
-      const p = pRes.data || {};
-      setProfileRow(p);
-      const k = kycRes.data || null;
+const avatarUrl = await resolveAvatar(p || {});
+const verified = !!p?.verified_at || !!p?.is_verified || !!p?.verified;
+const kyc_status = p?.kyc_status || kycRes.data?.status || null;
 
-      const avatarUrl = await resolveAvatar(p || {});
-      const verified = !!u?.verified_at || !!p?.is_verified;
-      const kyc_status = u?.kyc_status || k?.status || null;
-      setUserRow({ ...u, kyc_status, verified, avatar_url: avatarUrl });
+setUserRow({
+  id: myId,
+  username: p?.username || null,
+  kyc_status,
+  verified,
+  avatar_url: avatarUrl
+});
       setLastKyc(k);
 
       if (k && k.status === "denied") {
@@ -309,7 +321,7 @@ export default function VerifyYourIdentityPage() {
       });
       if (insErr) throw insErr;
 
-      await supabase.from("users").update({ kyc_status: "pending" }).eq("id", myId);
+      await supabase.from("profiles").update({ kyc_status: "pending" }).eq("user_id", myId);
 
       setStatusMsg(t("verify.msg.submitted"));
       setUserRow((u) => (u ? { ...u, kyc_status: "pending" } : u));

@@ -106,7 +106,9 @@ const redirectTo =
 const { error: signUpErr } = await supabase.auth.signUp({
   email,
   password,
-  options: { emailRedirectTo: redirectTo }
+  options: {
+    emailRedirectTo: `${window.location.origin}/VerifyCodePage`,
+  },
 });
 
   if (signUpErr) {

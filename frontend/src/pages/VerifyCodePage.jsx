@@ -69,31 +69,34 @@ export default function VerifyCodePage() {
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
 useEffect(() => {
-  // make sure any access_token in the URL hash gets parsed on first load
-  supabase.auth.getSession();
-  const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event !== "SIGNED_IN" || !session?.user?.id) return;
-
-    const uid = session.user.id;
-
-    // only create row if missing
+  const routeFromProfile = async (uid) => {
     await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
-
-    // cache
     localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
 
     const { data: prof } = await supabase
       .from("profiles")
       .select("onboarding_complete, is_admin")
       .eq("user_id", uid)
-      .single();
+      .maybeSingle();
 
     if (prof?.is_admin) return navigate("/admin", { replace: true });
     if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
     return navigate("/onboarding/terms", { replace: true });
+  };
+
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) await routeFromProfile(session.user.id);
+  })();
+
+  const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (!session?.user?.id) return;
+    if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+      await routeFromProfile(session.user.id);
+    }
   });
 
-  return () => sub.subscription.unsubscribe();
+  return () => sub?.subscription?.unsubscribe();
 }, [navigate]);
 
   // simple countdown for resend
