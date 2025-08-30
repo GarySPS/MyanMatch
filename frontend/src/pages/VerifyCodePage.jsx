@@ -69,31 +69,28 @@ export default function VerifyCodePage() {
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
 useEffect(() => {
-  const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
-    if (!session?.user?.id) return;
+  const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event !== "SIGNED_IN" || !session?.user?.id) return;
 
-    // Create/ensure profile NOW that auth user exists
-    await supabase
-      .from("profiles")
-      .upsert({ user_id: session.user.id, onboarding_complete: false }, { onConflict: "user_id" });
+    const uid = session.user.id;
 
-    // Cache small user object (optional)
-    localStorage.setItem(
-      "myanmatch_user",
-      JSON.stringify({ id: session.user.id, user_id: session.user.id, onboarding_complete: false })
-    );
+    // only create row if missing
+    await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
 
-    // Route forward
+    // cache
+    localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
+
     const { data: prof } = await supabase
       .from("profiles")
       .select("onboarding_complete, is_admin")
-      .eq("user_id", session.user.id)
+      .eq("user_id", uid)
       .single();
 
     if (prof?.is_admin) return navigate("/admin", { replace: true });
     if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
     return navigate("/onboarding/terms", { replace: true });
   });
+
   return () => sub.subscription.unsubscribe();
 }, [navigate]);
 

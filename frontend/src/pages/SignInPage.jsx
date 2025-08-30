@@ -8,12 +8,8 @@ async function ensureProfileAndCache() {
   const authId = user?.id;
   if (!authId) return null;
 
-  await supabase
-    .from("profiles")
-    .upsert(
-      { user_id: authId, onboarding_complete: false },
-      { onConflict: "user_id" }
-    );
+  // only create row if missing – don’t touch onboarding_complete
+  await supabase.from("profiles").upsert({ user_id: authId }, { onConflict: "user_id" });
 
   const { data: prof } = await supabase
     .from("profiles")
