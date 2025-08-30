@@ -120,7 +120,7 @@ const { error: signUpErr } = await supabase.auth.signUp({
 
   setLoading(false);
   // Go to the “check your email” screen
-  navigate("/VerifyCodePage", { state: { email } });
+  navigate("/VerifyCodePage", { state: { email, from: "signup" } });
 }
 
   return (
