@@ -68,18 +68,34 @@ export default function VerifyCodePage() {
   const [timer, setTimer] = useState(0);
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
-  // If user already signed in (after clicking email link), route forward
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
-      if (session?.user) {
-        const prof = await ensureProfileAndCache();
-        if (prof?.is_admin) return navigate("/admin", { replace: true });
-        if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-        return navigate("/onboarding/terms", { replace: true });
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [navigate]);
+useEffect(() => {
+  const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
+    if (!session?.user?.id) return;
+
+    // Create/ensure profile NOW that auth user exists
+    await supabase
+      .from("profiles")
+      .upsert({ user_id: session.user.id, onboarding_complete: false }, { onConflict: "user_id" });
+
+    // Cache small user object (optional)
+    localStorage.setItem(
+      "myanmatch_user",
+      JSON.stringify({ id: session.user.id, user_id: session.user.id, onboarding_complete: false })
+    );
+
+    // Route forward
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("onboarding_complete, is_admin")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (prof?.is_admin) return navigate("/admin", { replace: true });
+    if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
+    return navigate("/onboarding/terms", { replace: true });
+  });
+  return () => sub.subscription.unsubscribe();
+}, [navigate]);
 
   // simple countdown for resend
   useEffect(() => {

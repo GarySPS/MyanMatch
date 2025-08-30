@@ -230,18 +230,14 @@ function apiUrl(path = "") {
     setError("");
     setSuccess(false);
 
-    // ---- get current user (normalize id) ----
-    let user;
-    try {
-      user = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-      const uid = user?.id || user?.user_id;
-      if (!uid) throw new Error("no uid");
-      user.id = uid;
-    } catch {
-      setError("You must be logged in.");
-      setSaving(false);
-      return;
-    }
+// ---- get current user from Supabase Auth ----
+const { data: { user } } = await supabase.auth.getUser();
+if (!user?.id) {
+  setError("You must be logged in.");
+  setSaving(false);
+  return;
+}
+const uid = user.id;
 
 // ---- build payload & upsert by user_id ----
  const payload = buildPayload(profileData || {});
