@@ -69,26 +69,43 @@ export default function VerifyCodePage() {
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
 useEffect(() => {
+  // prevent double navigation loops
+  let navigated = false;
+
   const routeFromProfile = async (uid) => {
+    if (!uid || navigated) return;
+    navigated = true;
+
+    // create row if missing; do not overwrite existing values
     await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
+
+    // lightweight cache for downstream pages
     localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
 
     const { data: prof } = await supabase
       .from("profiles")
-      .select("onboarding_complete, is_admin")
+      .select("onboarding_complete,is_admin")
       .eq("user_id", uid)
       .maybeSingle();
 
-    if (prof?.is_admin) return navigate("/admin", { replace: true });
-    if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-    return navigate("/onboarding/terms", { replace: true });
+    if (prof?.is_admin) {
+      navigate("/admin", { replace: true });
+      return;
+    }
+    if (prof?.onboarding_complete) {
+      navigate("/HomePage", { replace: true });
+      return;
+    }
+    navigate("/onboarding/terms", { replace: true });
   };
 
+  // if session already exists (coming back from email link), route now
   (async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) await routeFromProfile(session.user.id);
   })();
 
+  // also react to auth events (e.g., after clicking the email link)
   const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (!session?.user?.id) return;
     if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {

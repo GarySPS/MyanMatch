@@ -318,11 +318,14 @@ const res = await fetch(url, { method: "POST", body: fd });
       localStorage.setItem("myanmatch_user", JSON.stringify(user));
     } catch {}
 
-    setSaving(false);
-    setSuccess(true);
-setTimeout(() => {
-  navigate("/HomePage", { replace: true });
-}, 600);
+setSaving(false);
+setSuccess(true);
+
+// ensure a minimal local cache (used by HomePage)
+localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
+
+// hard redirect to avoid any lingering listeners
+window.location.replace("/HomePage");
   };
 
   return (
