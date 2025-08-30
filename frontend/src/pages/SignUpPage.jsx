@@ -97,11 +97,17 @@ async function handleSignUp(e) {
   setLoading(true);
 
   // Create the account; Supabase will email a CONFIRMATION LINK (no 6-digit code).
-  const { error: signUpErr } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: window.location.origin } // back to your app
-  });
+// send the confirm email to the right page for each env
+const redirectTo =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:3000/VerifyCodePage"
+    : "https://www.myanmatch.com/VerifyCodePage";
+
+const { error: signUpErr } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { emailRedirectTo: redirectTo }
+});
 
   if (signUpErr) {
     setErr(signUpErr.message);

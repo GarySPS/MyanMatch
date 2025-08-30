@@ -69,6 +69,8 @@ export default function VerifyCodePage() {
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
 useEffect(() => {
+  // make sure any access_token in the URL hash gets parsed on first load
+  supabase.auth.getSession();
   const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (event !== "SIGNED_IN" || !session?.user?.id) return;
 
