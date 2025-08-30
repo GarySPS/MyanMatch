@@ -82,28 +82,6 @@ export default function SignUpPage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
-  // If a session exists, route forward
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
-      if (session?.user) {
-        try {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("onboarding_complete, is_admin")
-            .eq("user_id", session.user.id)
-            .single();
-
-          if (prof?.is_admin) return navigate("/admin", { replace: true });
-          if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-          return navigate("/onboarding/terms", { replace: true });
-        } catch {
-          return navigate("/onboarding/terms", { replace: true });
-        }
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [navigate]);
-
 async function handleSignUp(e) {
   e.preventDefault();
   setErr("");
