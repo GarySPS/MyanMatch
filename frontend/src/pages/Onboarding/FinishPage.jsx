@@ -94,10 +94,12 @@ export default function FinishPage() {
     return Array.isArray(val) ? val : [val];
   }
 
+// REPLACE THIS ENTIRE FUNCTION
+
 function buildPayload(pd) {
   const out = {};
 
-  // ---- helpers ----
+  // ---- helpers (these are fine) ----
   const toArray = (val) => (val == null ? [] : Array.isArray(val) ? val : [val]);
   const normalizeDate = (val) => {
     if (!val) return null;
@@ -128,32 +130,24 @@ function buildPayload(pd) {
     return Number.isFinite(age) ? age : null;
   };
 
-  // 1) copy ONLY mapped keys that exist
-  for (const [k, v] of Object.entries(pd || {})) {
-    const col = KEY_MAP[k];
-    if (col && v !== undefined) out[col] = v;
+  // --- [!FIX!] ROBUST MAPPING LOGIC ---
+  // Iterate over the KEY_MAP to find all possible frontend keys
+  // and map them to their corresponding database columns.
+  for (const [frontendKey, dbColumn] of Object.entries(KEY_MAP)) {
+    // If the database column hasn't been filled yet,
+    // and the data for this frontend key exists in the profileData (pd),
+    // then add it to our output payload.
+    if (out[dbColumn] === undefined && pd[frontendKey] !== undefined) {
+      out[dbColumn] = pd[frontendKey];
+    }
   }
 
-  /* ---- ensure names exist and are clean ---- */
-if (!out.first_name && (pd.firstName || pd.fname)) out.first_name = pd.firstName || pd.fname;
-if (!out.last_name  && (pd.lastName  || pd.lname)) out.last_name  = pd.lastName  || pd.lname;
+  // ---- NOW, PROCEED WITH DATA CLEANUP AND NORMALIZATION ----
 
-// trim -> null if empty
-if (out.first_name != null) {
-  out.first_name = String(out.first_name).trim();
-  if (!out.first_name) out.first_name = null;
-}
-if (out.last_name != null) {
-  out.last_name = String(out.last_name).trim();
-  if (!out.last_name) out.last_name = null; // optional is fine as NULL
-}
-
-  // 2) Ensure birthdate exists & normalized (we accept either string or Date)
-  //    Your BirthdatePage sets 'YYYY-MM-DD' already, but we guard anyway.
-  if (pd?.birthdate && !out.birthdate) out.birthdate = pd.birthdate;
+  // 2) Ensure birthdate is normalized
   if ("birthdate" in out) out.birthdate = normalizeDate(out.birthdate);
 
-  // 3) Ensure age is valid; if missing/invalid, compute from birthdate
+  // 3) Ensure age is valid; if missing, compute from birthdate
   const ageNum = toNum(out.age);
   if (ageNum == null) {
     out.age = computeAgeFromBirthdate(out.birthdate);
@@ -161,42 +155,39 @@ if (out.last_name != null) {
     out.age = ageNum;
   }
 
-  // 4) normalize array/jsonb-array columns
+  // 4) Normalize array/jsonb-array columns
   for (const key of ARRAY_COLUMNS) {
     if (key in out) out[key] = toArray(out[key]);
   }
 
-  // 5) media defaults and avatar fallbacks
-  const media = Array.isArray(out.media) ? out.media : toArray(pd?.media);
-  const media_paths = Array.isArray(out.media_paths) ? out.media_paths : toArray(pd?.media_paths);
+  // 5) Media defaults and avatar fallbacks
+  const media = Array.isArray(out.media) ? out.media : [];
+  const media_paths = Array.isArray(out.media_paths) ? out.media_paths : [];
   out.media = media;
   out.media_paths = media_paths;
-  if (!out.avatar_url) out.avatar_url = media?.[0] ?? null;
-  if (!out.avatar_path) out.avatar_path = media_paths?.[0] ?? null;
+  if (!out.avatar_url) out.avatar_url = media?.[0]?.url ?? media?.[0] ?? null;
+  if (!out.avatar_path) out.avatar_path = media_paths?.[0]?.path ?? media_paths?.[0] ?? null;
   if (typeof out.avatar_index !== "number") out.avatar_index = 0;
+  
+  // 6) Prefer `weed` over legacy `weed_usage` (already handled by new loop)
 
-  // 6) prefer `weed` over legacy `weed_usage`
-  if (pd?.weed !== undefined) out.weed = pd.weed;
-  else if (pd?.weed_usage !== undefined && out.weed === undefined) out.weed = pd.weed_usage;
-
-  // 7) type fixes for remaining numbers
+  // 7) Type fixes for numbers
   if ("height_ft" in out) out.height_ft = toNum(out.height_ft);
   if ("height_cm" in out) out.height_cm = toNum(out.height_cm);
   if ("lat" in out) out.lat = toNum(out.lat);
   if ("lng" in out) out.lng = toNum(out.lng);
 
-  // 8) clean arrays (trim empties)
+  // 8) Clean arrays (trim empties)
   for (const key of ARRAY_COLUMNS) {
     if (key in out && Array.isArray(out[key])) {
       out[key] = out[key].filter((x) => (typeof x === "string" ? x.trim() : x != null));
     }
   }
-  // ensure schools jsonb[] objects
   if (Array.isArray(out.schools)) {
     out.schools = out.schools.map((s) => (typeof s === "string" ? { name: s.trim() } : s));
   }
 
-  // 9) flags & timestamp (and force terms true at finish)
+  // 9) Set flags & timestamp
   out.agreedToTerms = true;
   out.onboarding_complete = true;
   out.updated_at = new Date().toISOString();
