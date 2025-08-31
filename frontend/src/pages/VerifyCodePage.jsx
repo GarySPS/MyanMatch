@@ -32,12 +32,9 @@ async function ensureProfileAndCache() {
   const authId = user?.id;
   if (!authId) return null;
 
-  await supabase
-    .from("profiles")
-    .upsert(
-      { user_id: authId, onboarding_complete: false },
-      { onConflict: "user_id" }
-    );
+await supabase
+  .from("profiles")
+  .upsert({ user_id: authId }, { onConflict: "user_id" });
 
   const { data: prof } = await supabase
     .from("profiles")
@@ -69,16 +66,13 @@ export default function VerifyCodePage() {
   const [toast, setToast] = useState({ open: false, type: "success", text: "" });
 
 useEffect(() => {
-  // gate: ONLY handle redirects here when we came from SIGNUP
-  const fromSignup = state?.from === "signup";
-  if (!fromSignup) return;
-
-  let navigated = false;
+  let didNav = false;
 
   const routeFromProfile = async (uid) => {
-    if (!uid || navigated) return;
-    navigated = true;
+    if (!uid || didNav) return;
+    didNav = true;
 
+    // only create row if missing; do NOT overwrite onboarding flags
     await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
     localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
 
@@ -88,16 +82,18 @@ useEffect(() => {
       .eq("user_id", uid)
       .maybeSingle();
 
-    if (prof?.is_admin) return navigate("/admin", { replace: true });
-    if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-    return navigate("/onboarding/terms", { replace: true });
+    if (prof?.is_admin) { navigate("/admin", { replace: true }); return; }
+    if (prof?.onboarding_complete) { navigate("/HomePage", { replace: true }); return; }
+    navigate("/onboarding/terms", { replace: true });
   };
 
+  // If a session already exists (e.g., user came from the email link), route now.
   (async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) await routeFromProfile(session.user.id);
   })();
 
+  // Also route on auth events after clicking the email link.
   const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (!session?.user?.id) return;
     if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
@@ -105,8 +101,8 @@ useEffect(() => {
     }
   });
 
-  return () => sub?.subscription?.unsubscribe();
-}, [navigate, state]);
+  return () => sub?.subscription?.unsubscribe?.();
+}, [navigate]);
 
   // simple countdown for resend
   useEffect(() => {

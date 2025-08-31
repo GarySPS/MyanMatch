@@ -721,21 +721,13 @@ export default function HomePage() {
   const [toastType, setToastType] = useState("success");
   const [toastText, setToastText] = useState("");
 
-  function showToast(text, type = "success") {
-    setToastText(text);
-    setToastType(type);
-    setToastOpen(true);
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
-  }
-
-// AFTER
+// === SAFE CURRENT USER ID (prevents bad queries) ===
 const currentUser = (() => {
   try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
   catch { return {}; }
 })();
 
-// accept only a UUID‑like id (prevents sending user_id=eq.)
+// accept only a UUID-like id (prevents sending user_id=eq.)
 const myId = (() => {
   const c = currentUser || {};
   const id = c.user_id || c.id || "";
