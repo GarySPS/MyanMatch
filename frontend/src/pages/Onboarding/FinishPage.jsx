@@ -225,108 +225,116 @@ function apiUrl(path = "") {
 }
 
 
-  const handleFinish = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess(false);
+// REPLACE THIS ENTIRE FUNCTION
 
-// ---- get current user from Supabase Auth ----
-const { data: { user } } = await supabase.auth.getUser();
-if (!user?.id) {
-  setError("You must be logged in.");
-  setSaving(false);
-  return;
-}
-const uid = user.id;
+const handleFinish = async () => {
+  setSaving(true);
+  setError("");
+  setSuccess(false);
 
-// ---- build payload & upsert by user_id ----
- const payload = buildPayload(profileData || {});
- payload.user_id = user.id; // key by profiles.user_id
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) {
+    setError("You must be logged in.");
+    setSaving(false);
+    return;
+  }
+  const uid = user.id;
 
- console.log("Finish payload:", payload);
+  const payload = buildPayload(profileData || {});
+  payload.user_id = uid;
 
-// --- Voice Prompt upload via BACKEND (safe MIME) ---
-try {
-  const vp = profileData?.voicePrompt;
-  let voicePromptJSON = undefined; // undefined -> no change
+  console.log("Finish payload:", payload);
 
-  if (vp?.file) {
-    const fd = new FormData();
-    fd.append("user_id", user.id);
-    fd.append("prompt", vp.prompt || "");
-    fd.append("duration", vp.duration ?? "");
-    fd.append("file", vp.file, `voice.${(vp.file.type || "audio/webm").split("/")[1]?.split(";")[0] || "webm"}`);
+  // --- Voice Prompt handling (your existing logic is fine) ---
+  try {
+    const vp = profileData?.voicePrompt;
+    let voicePromptJSON = undefined;
 
-    // NOTE: change to your actual API base
-const url = apiUrl("voice/onboarding/voice");
-console.log("Uploading voice to:", url); // optional debug
-const res = await fetch(url, { method: "POST", body: fd });
+    if (vp?.file) {
+      const fd = new FormData();
+      fd.append("user_id", user.id);
+      fd.append("prompt", vp.prompt || "");
+      fd.append("duration", vp.duration ?? "");
+      fd.append("file", vp.file, `voice.${(vp.file.type || "audio/webm").split("/")[1]?.split(";")[0] || "webm"}`);
 
-    if (!res.ok) {
-      console.error("voice upload failed:", await res.text());
-      voicePromptJSON = null; // clear the column if upload failed
-    } else {
-      const data = await res.json(); // { url, path, bucket, mime, duration, prompt }
-      voicePromptJSON = {
-        prompt: data.prompt || vp.prompt || null,
-        url: data.url || null,
-        path: data.path || null,
-        bucket: data.bucket || "onboarding",
-        duration: data.duration ?? vp.duration ?? null,
-        mime: data.mime || (vp.file.type?.split(";")[0]) || "audio/webm",
+      const url = apiUrl("voice/onboarding/voice");
+      const res = await fetch(url, { method: "POST", body: fd });
+
+      if (!res.ok) {
+        console.error("voice upload failed:", await res.text());
+        voicePromptJSON = null;
+      } else {
+        const data = await res.json();
+        voicePromptJSON = {
+          prompt: data.prompt || vp.prompt || null,
+          url: data.url || null,
+          path: data.path || null,
+          bucket: data.bucket || "onboarding",
+          duration: data.duration ?? vp.duration ?? null,
+          mime: data.mime || (vp.file.type?.split(";")[0]) || "audio/webm",
+        };
+      }
+    } else if (vp?.url) {
+      voicePromptJSON = { prompt: vp.prompt, url: vp.url, duration: vp.duration ?? null };
+    } else if (vp === null) {
+      voicePromptJSON = null;
+    }
+
+    if (voicePromptJSON !== undefined) {
+      payload.voicePrompt = voicePromptJSON;
+    }
+  } catch (e) {
+    console.warn("voice prompt mapping failed:", e);
+  }
+
+  // ---- Upsert the final profile ----
+  const { error: dbErr } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "user_id" });
+
+  if (dbErr) {
+    console.error(dbErr);
+    setError("Failed to save your profile: " + dbErr.message);
+    setSaving(false);
+    return;
+  }
+
+  // --- [!FIX!] FETCH THE FULL PROFILE AND CACHE IT CORRECTLY ---
+  try {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+      .eq("user_id", uid)
+      .single();
+
+    if (fullProfile) {
+      const cache = {
+        id: uid,
+        user_id: uid,
+        first_name: fullProfile.first_name || null,
+        last_name: fullProfile.last_name || null,
+        avatar_url: fullProfile.avatar_url || null,
+        onboarding_complete: !!fullProfile.onboarding_complete,
+        is_admin: !!fullProfile.is_admin,
       };
+      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+    } else {
+      // Fallback cache if fetch fails for some reason
+      localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid, onboarding_complete: true }));
     }
-  } else if (vp?.url) {
-    // kept an existing clip
-    voicePromptJSON = {
-      prompt: vp.prompt,
-      url: vp.url,
-      duration: vp.duration ?? null,
-    };
-  } else if (vp === null) {
-    voicePromptJSON = null;
+  } catch (e) {
+    console.error("Failed to cache full profile:", e);
   }
-
-  if (voicePromptJSON !== undefined) {
-    payload.voicePrompt = voicePromptJSON;
-  }
-} catch (e) {
-  console.warn("voice prompt mapping failed:", e);
-  // continue – don’t block profile save
-}
-
- const { error: dbErr } = await supabase
-   .from("profiles")
-   .upsert(payload, { onConflict: "user_id" })
-   .select("user_id")
-   .single();
-
-   if (dbErr) console.error(dbErr);
-
-    if (dbErr) {
-      setError("Failed to save your profile: " + dbErr.message);
-      setSaving(false);
-      return;
-    }
-
-    // Update local cache (handy for avatar/name in UI)
-    try {
-      user.onboarding_complete = true;
-      if (payload.first_name) user.first_name = payload.first_name;
-      if (payload.last_name) user.last_name = payload.last_name;
-      if (payload.avatar_url) user.avatar_url = payload.avatar_url;
-      localStorage.setItem("myanmatch_user", JSON.stringify(user));
-    } catch {}
-
-setSaving(false);
-setSuccess(true);
-
-// ensure a minimal local cache (used by HomePage)
-localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
-
-// hard redirect to avoid any lingering listeners
-window.location.replace("/HomePage");
-  };
+  
+  setSaving(false);
+  setSuccess(true);
+  
+  // --- [!FIX!] NAVIGATE CORRECTLY INSTEAD OF HARD RELOAD ---
+  // Wait a moment for the success animation, then navigate.
+  setTimeout(() => {
+    navigate("/HomePage", { replace: true });
+  }, 800);
+};
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-between bg-[#82142d] relative overflow-hidden">
