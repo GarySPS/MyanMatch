@@ -273,7 +273,7 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
 
 {/* ✅ Customer Support row added here */}
 <NavRow
-  label={t("nav.support")} {/* <-- Changed */}
+  label={t("nav.support")} 
   icon="📞"
   onClick={() => window.open("https://t.me/myanmatch", "_blank")}
 />
@@ -286,7 +286,7 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
           />
 
 <NavRow
-  label={t("nav.download")} {/* <-- Changed */}
+  label={t("nav.download")}
   icon="⬇️"
   onClick={() => navigate("/Download")}
 />
