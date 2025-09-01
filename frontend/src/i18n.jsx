@@ -218,7 +218,7 @@ const STRINGS = {
 "explore.ribbon": "Users of the Day",
 "explore.title": "Today’s Boosted Profiles",
 "explore.subtitle": "Handpicked standouts boosted to the top. Send a gift to make a memorable first impression.",
-"explore.boostMe": "Boost Me",
+"explore.boostMe": "Boost",
 "explore.boosted": "Boosted",
 "explore.card.gift": "Gift",
 "explore.banner.error": "Could not load boosted profiles.",
@@ -879,6 +879,9 @@ const STRINGS = {
       "iosStep3": "3) Tap Add to finish.",
       "iosNote": "Note: iOS installs PWAs from Safari. Open MyanMatch in Safari if you’re using another browser."
     },
+    // Add to STRINGS.en
+"nav.support": "Customer Support",
+"nav.download": "Download",
 
     "profile": {
       "about": "About"
@@ -1102,7 +1105,7 @@ const STRINGS = {
 "explore.ribbon": "Users of the Day",
 "explore.title": "ယနေ့ လူကြိုက်များသော ပရိုဖိုင်များ",
 "explore.subtitle": "ယနေ့လူကြိုက်များသောပရိုဖိုင်များကို ဝင်ရောက်ကြည့်ရှုပြီးမိမိနှင့် ထပ်တူကျနိုင်သောသူကို ရှာဖွေနိုင်ပါပြီရှင်။ စိတ်ဝင်စားစေဖို့ ယခုဖဲ🎁နုတ်ဆက်လက်ဆောင်တစ်ခု ပို့လိုက်ပါနော်။",
-"explore.boostMe": "Boost တင်မည်",
+"explore.boostMe": "Boost",
 "explore.boosted": "Boost တင်ထားသည်",
 "explore.card.gift": "လက်ဆောင်",
 "explore.banner.error": "လူကြိုက်များသော ပရိုဖိုင်များကို ရှာမတွေ့သေးပါရှင်။",
@@ -1746,6 +1749,10 @@ const STRINGS = {
       "iosStep3": "၃) “Add” ကိုနှိပ်ပြီးပြီးဆုံးပါမည်။",
       "iosNote": "မှတ်ချက် — iOS တွင် Safari မှသာ တပ်ဆင်နိုင်သည်။ အခြား browser သုံးနေပါက Safari ဖြင့်ဖွင့်ပါ။"
     },
+    // Add to STRINGS.my
+"nav.support": "ဧည့်သည် ဝန်ဆောင်မှု",
+"nav.download": "ဒေါင်းလုတ်ဆွဲမည်",
+
     "profile": {
       "about": "အကြောင်းအရာ"
     },

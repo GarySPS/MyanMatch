@@ -271,12 +271,12 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
             }}
           />
 
-          {/* ✅ Customer Support row added here */}
-          <NavRow
-            label="Customer Support"
-            icon="📞"
-            onClick={() => window.open("https://t.me/myanmatch", "_blank")}
-          />
+{/* ✅ Customer Support row added here */}
+<NavRow
+  label={t("nav.support")} {/* <-- Changed */}
+  icon="📞"
+  onClick={() => window.open("https://t.me/myanmatch", "_blank")}
+/>
 
           <NavRow
             label={t("nav.language")}
@@ -285,8 +285,8 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
             onClick={() => navigate("/settings/language")}
           />
 
-          <NavRow
-  label="Download"
+<NavRow
+  label={t("nav.download")} {/* <-- Changed */}
   icon="⬇️"
   onClick={() => navigate("/Download")}
 />
