@@ -42,6 +42,49 @@ export default function AdminDashboard() {
     return m;
   }, [profiles]);
 
+// ADD THIS NEW FUNCTION
+  async function handleImpersonate(user) {
+    if (!user || !user.id) {
+      alert("Cannot log in as this user: missing user ID.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to log in as ${user.email}? A new tab will open.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('You are not logged in as an admin.');
+
+      // Ask our backend to create the special login link
+      const response = await fetch(`${API_BASE}/api/user/admin/impersonate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.magic_link) {
+        throw new Error(result.error || 'Failed to get login link from server.');
+      }
+
+      // Open the special link in a new tab, logging you in as the user
+      window.open(result.magic_link, '_blank');
+
+    } catch (err) {
+      console.error("Impersonation failed:", err);
+      alert(`Could not log in as user: ${err.message}`);
+    }
+  }
+
   async function load() {
     const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
       supabase
@@ -62,10 +105,23 @@ export default function AdminDashboard() {
         .from("profiles")
         .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
       supabase
-        .from("users")
-        .select(
-          "id, username, email, password, short_id, created_at, verified, kyc_status"
-        ),
+// Fetches users from our new, secure backend API
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('Not logged in');
+
+          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
+
+          if (!response.ok) throw new Error('Failed to fetch user list');
+          const data = await response.json();
+          return { data: data.users || [], error: null };
+        } catch (error) {
+          return { data: [], error };
+        }
+      })(),
       supabase
         .from("kyc_requests")
         .select("*")
@@ -381,40 +437,42 @@ export default function AdminDashboard() {
       {/* USERS */}
       {tab === "users" && (
         <Table>
-          <thead>
-            <Row header>
-              <Cell>User</Cell>
-              <Cell>Email</Cell>
-              <Cell>Password</Cell>
-              <Cell>Coin</Cell>
-              <Cell>Hold</Cell>
-              <Cell>Admin</Cell>
-              <Cell>Verified</Cell>
-              <Cell>Joined</Cell>
-            </Row>
-          </thead>
-          <tbody>
-            {profiles.map((p) => {
-              const u = userIndex.get(p.user_id);
-              return (
-                <Row key={p.user_id}>
+<thead>
+            <Row header>
+              <Cell>Short ID</Cell>
+              <Cell>Email</Cell>
+              <Cell>Coin</Cell>
+              <Cell>Hold</Cell>
+              <Cell>Admin</Cell>
+              <Cell>Verified</Cell>
+              <Cell>Joined</Cell>
+              <Cell>Actions</Cell>
+            </Row>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const p = profileIndex.get(u.id); // Find matching profile data
+              return (
+                <Row key={u.id}>
+                  <Cell>{u.short_id || "—"}</Cell>
+                  <Cell>{u.email || ""}</Cell>
+                  <Cell center>{p?.coin ?? "N/A"}</Cell>
+                  <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
+                  <Cell center>{u.is_admin ? "✓" : ""}</Cell>
+                  <Cell center>{p?.is_verified ? "✓" : ""}</Cell>
+                  <Cell>{u.created_at?.slice(0, 10) || ""}</Cell>
                   <Cell>
-                    {u?.username ||
-                      u?.short_id ||
-                      String(p?.user_id || "").slice(0, 8) ||
-                      "—"}
+                    <button 
+                      onClick={() => handleImpersonate(u)} 
+                      className="px-2 py-1 bg-blue-600 rounded text-white hover:bg-blue-700"
+                    >
+                      Log In As User
+                    </button>
                   </Cell>
-                  <Cell>{u?.email || ""}</Cell>
-                  <Cell>{u?.password || ""}</Cell>
-                  <Cell center>{p.coin}</Cell>
-                  <Cell center>{p.coin_hold}</Cell>
-                  <Cell center>{p.is_admin ? "✓" : ""}</Cell>
-                  <Cell center>{p.is_verified ? "✓" : ""}</Cell>
-                  <Cell>{u?.created_at?.slice(0, 10) || ""}</Cell>
-                </Row>
-              );
-            })}
-          </tbody>
+                </Row>
+              );
+            })}
+          </tbody>
         </Table>
       )}
 
