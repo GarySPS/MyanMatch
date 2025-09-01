@@ -549,17 +549,19 @@ function ShortIdSearchModal({ open, onClose, onFound }) {
     const shortId = (val || "").trim();
     if (!shortId) return;
     setBusy(true); setErr("");
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("id")
-        .eq("short_id", shortId)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data?.id) { setErr(t("profile.shortidNotFound") || "Not found"); }
-      else { onFound?.(data.id); onClose?.(); }
+try {
+      const response = await fetch(`/api/user/by-short-id/${shortId}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'User not found');
+      }
+
+      onFound?.(result.user_id);
+      onClose?.();
+
     } catch (e) {
-      setErr(t("profile.shortidError") || "Something went wrong");
+      setErr(e.message || "Something went wrong");
     } finally {
       setBusy(false);
     }
@@ -693,7 +695,8 @@ function showToast(text, type = "success") {
 
 const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
   supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-  supabase.from("users").select("id, verified_at, kyc_status, short_id").eq("id", viewingUserId).maybeSingle(),
+  // [!FIX!] Fetches from the correct 'app_users' table now
+  supabase.from("app_users").select("id, short_id").eq("id", viewingUserId).maybeSingle(),
 ]);
 
       if (profErr || uerr) {
@@ -1045,7 +1048,8 @@ function renderMedia(idx) {
   <div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
     <h2 className="text-lg font-bold mb-3 text-white/90">{t("profile.about")}</h2>
     <ul className="flex flex-wrap gap-2">
-      {/* Self short ID (ONLY self-visible) */}
+      
+{/* Self short ID (ONLY self-visible) */}
       {isSelf && user._short_id && (
         <InfoTag icon={<span>🆔</span>} text={
           <span className="inline-flex items-center gap-2">
