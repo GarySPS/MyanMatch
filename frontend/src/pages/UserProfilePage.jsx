@@ -827,8 +827,49 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
     user.photo1, user.photo2, user.photo3, user.photo4, user.photo5, user.photo6,
   ].filter(Boolean);
 
-  const photoUrls = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
+const photoUrls = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
 
+// [!ADD THIS!]
+// --- Add media rendering logic from HomePage to support videos ---
+const isVideo = (u) => /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
+
+function renderMedia(idx) {
+  const url = photoUrls[idx];
+  if (!url) return null;
+  const isVid = isVideo(url);
+
+  return (
+    <div key={url || idx} className="mx-4 relative group">
+      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
+        {isVid ? (
+          <video
+            src={url}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            loop
+            controls
+          />
+        ) : (
+          <img
+            src={url}
+            alt={`${name}'s media ${idx + 1}`}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        )}
+      </div>
+      <button
+        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
+        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
+                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
+        aria-label={t("home.btn.likePhoto")}
+      >
+        <FaHeart size={20} />
+      </button>
+    </div>
+  );
+}
 
   // prompts[]
   const prompts = Array.isArray(user.prompts)
@@ -993,30 +1034,16 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
         </div>
       </div>
 
-{/* CONTENT — same order/theme as HomePage */}
-<div className="px-0 pb-40 pt-[76px] max-w-[480px] mx-auto space-y-4">
-  {/* 1) photo[0] */}
-  {photoUrls[0] && (
-    <div className="relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[0]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
+// src/pages/UserProfilePage.jsx
 
-      {/* open photo modal (index 0 is view-only, no like) */}
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(0); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  )}
+{/* [!REPLACE!] CONTENT — same order/theme as HomePage, using renderMedia */}
+<div className="pt-[calc(env(safe-area-inset-top)+76px)] pb-[calc(env(safe-area-inset-bottom)+210px)] max-w-[480px] mx-auto space-y-4">
+  {/* Unified media order: photos or videos */}
+  {renderMedia(0)}
 
-  {/* 2) About card (chips, identical to HomePage) */}
+  {/* About card */}
   <div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-<h2 className="text-lg font-bold mb-3 text-white/90">{t("profile.about")}</h2>
+    <h2 className="text-lg font-bold mb-3 text-white/90">{t("profile.about")}</h2>
     <ul className="flex flex-wrap gap-2">
       {/* Self short ID (ONLY self-visible) */}
       {isSelf && user._short_id && (
@@ -1033,169 +1060,55 @@ const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Prom
         } />
       )}
 
-      <InfoTag icon={<FaVenusMars />} text={translateSingle(t, "gender", (user.gender || user.genders || user.sex))} />
-      <InfoTag icon={<FaTransgender />} text={translateSingle(t, "sexuality", (user.orientation || user.sexuality))} />
-      <InfoTag icon={<FaRulerVertical />} text={user.height} />
-      <InfoTag icon={<FaBriefcase />} text={user.job || user.job_title} />
-      <InfoTag icon={<FaGraduationCap />} text={translateSingle(t, "education", user.education || user.education_level)} />
-      <InfoTag icon={<FaHome />} text={user.hometown} />
+      <InfoTag icon={<FaVenusMars />} text={translateSingle(t, "gender", gender)} />
+      <InfoTag icon={<FaTransgender />} text={translateSingle(t, "sexuality", sexuality)} />
+      <InfoTag icon={<FaRulerVertical />} text={height} />
+      <InfoTag icon={<FaBriefcase />} text={job} />
+      <InfoTag icon={<FaGraduationCap />} text={translateSingle(t, "education", education)} />
+      <InfoTag icon={<FaHome />} text={hometown} />
       <InfoTag icon={<FaBook />} text={translateArray(t, "religion", user.religion)} />
       <InfoTag icon={<FaGlobeAmericas />} text={translateArray(t, "ethnicity", user.ethnicity)} />
-      <InfoTag icon={<FaBalanceScale />} text={translateSingle(t, "politics", user.politics || user.political_belief)} />
+      <InfoTag icon={<FaBalanceScale />} text={translateSingle(t, "politics", politics)} />
       <InfoTag icon={<FaGlassWhiskey />} text={translateSingle(t, "yesno", user.drinking)} />
       <InfoTag icon={<FaSmoking />} text={translateSingle(t, "yesno", user.smoking)} />
-      <InfoTag icon={<FaCannabis />} text={translateSingle(t, "yesno", (user.weed ?? user.cannabis))} />
-      <InfoTag icon={<FaSyringe />} text={translateSingle(t, "yesno", user.drugs)} />
-      <InfoTag icon={<FaChild />} text={translateSingle(t, "children", user.children || user.have_children)} />
+      <InfoTag icon={<FaCannabis />} text={translateSingle(t, "yesno", weed)} />
+      <InfoTag icon={<FaSyringe />} text={translateSingle(t, "yesno", drugs)} />
+      <InfoTag icon={<FaChild />} text={translateSingle(t, "children", children)} />
       <InfoTag icon={<FaUsers />} text={translateArray(t, "familyPlans", user.family_plans)} />
-      <InfoTag icon={<FaCommentDots />} text={translateSingle(t, "intention", user.relationship)} />
+      <InfoTag icon={<FaCommentDots />} text={translateSingle(t, "intention", relationship)} />
     </ul>
   </div>
 
-  {/* 3) photo[1] */}
-  {photoUrls[1] && (
-    <div className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[1]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(1); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  )}
-
-  {/* 4) photo[2] */}
-  {photoUrls[2] && (
-    <div className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[2]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(2); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  )}
-
-  {/* 5) prompt[0] (with heart button like HomePage) */}
+  {/* Continue with rest of media + prompts */}
+  {renderMedia(1)}
+  {renderMedia(2)}
   {prompts[0]?.prompt && prompts[0]?.answer && (
     <div className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
       <div className="text-lime-300 font-semibold mb-1">{resolvePromptTitle(t, prompts[0].prompt)}</div>
       <p className="text-white/90 text-lg leading-relaxed">{prompts[0].answer}</p>
-      {!isSelf && (
-        <button
-          onClick={() => openGiftWithOptionalComment(`"${prompts[0].answer}"`)}
-          className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                     hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-          aria-label={t("home.btn.likePrompt")}
-        >
-          <FaHeart size={18} />
-        </button>
-      )}
     </div>
   )}
-
-  {/* 6) photo[3] */}
-  {photoUrls[3] && (
-    <div className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[3]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(3); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  )}
-
-  {/* 7) prompt[1] */}
+  {renderMedia(3)}
   {prompts[1]?.prompt && prompts[1]?.answer && (
     <div className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
       <div className="text-lime-300 font-semibold mb-1">{resolvePromptTitle(t, prompts[1].prompt)}</div>
       <p className="text-white/90 text-lg leading-relaxed">{prompts[1].answer}</p>
-      {!isSelf && (
-        <button
-          onClick={() => openGiftWithOptionalComment(`"${prompts[1].answer}"`)}
-          className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                     hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-          aria-label={t("home.btn.likePrompt")}
-        >
-          <FaHeart size={18} />
-        </button>
-      )}
     </div>
   )}
-
-  {/* 8) photo[4] */}
-  {photoUrls[4] && (
-    <div className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[4]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(4); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  )}
-
-  {/* 9) prompt[2] */}
+  {renderMedia(4)}
   {prompts[2]?.prompt && prompts[2]?.answer && (
     <div className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
       <div className="text-lime-300 font-semibold mb-1">{resolvePromptTitle(t, prompts[2].prompt)}</div>
       <p className="text-white/90 text-lg leading-relaxed">{prompts[2].answer}</p>
-      {!isSelf && (
-        <button
-          onClick={() => openGiftWithOptionalComment(`"${prompts[2].answer}"`)}
-          className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                     hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-          aria-label={t("home.btn.likePrompt")}
-        >
-          <FaHeart size={18} />
-        </button>
-      )}
     </div>
   )}
+  {renderMedia(5)}
 
-  {/* 10) voice prompt */}
+  {/* Voice Prompt */}
   {voiceUrl && (
     <div className="mx-4 p-5 rounded-2xl bg-white/5 border border-white/10">
       <div className="text-lime-300 font-semibold mb-2">{voiceTitle}</div>
       <audio controls src={voiceUrl} className="w-full" />
-    </div>
-  )}
-
-  {/* 11) photo[5] */}
-  {photoUrls[5] && (
-    <div className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        <img src={photoUrls[5]} alt="" className="w-full h-full object-cover" draggable={false} />
-      </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(5); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
     </div>
   )}
 </div>
