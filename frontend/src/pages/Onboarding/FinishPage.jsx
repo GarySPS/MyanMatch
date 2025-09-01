@@ -290,33 +290,35 @@ const handleFinish = async () => {
     return;
   }
 
-  // --- [!FIX!] FETCH THE FULL PROFILE AND CACHE IT CORRECTLY ---
-  try {
-    const { data: fullProfile } = await supabase
-      .from("profiles")
-      .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
-      .eq("user_id", uid)
-      .single();
+// IN THE handleFinish FUNCTION, REPLACE THE try/catch BLOCK WITH THIS
 
-    if (fullProfile) {
-      const cache = {
-        id: uid,
-        user_id: uid,
-        first_name: fullProfile.first_name || null,
-        last_name: fullProfile.last_name || null,
-        avatar_url: fullProfile.avatar_url || null,
-        onboarding_complete: !!fullProfile.onboarding_complete,
-        is_admin: !!fullProfile.is_admin,
-      };
-      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-    } else {
-      // Fallback cache if fetch fails for some reason
-      localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid, onboarding_complete: true }));
-    }
-  } catch (e) {
-    console.error("Failed to cache full profile:", e);
+// --- [!FIX!] FETCH THE FULL PROFILE AND CACHE IT CORRECTLY ---
+try {
+  const { data: fullProfile } = await supabase
+    .from("profiles")
+    .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+    .eq("user_id", uid)
+    .single();
+
+  if (fullProfile) {
+    const cache = {
+      id: uid,
+      user_id: uid,
+      first_name: fullProfile.first_name || null,
+      last_name: fullProfile.last_name || null,
+      avatar_url: fullProfile.avatar_url || null,
+      onboarding_complete: !!fullProfile.onboarding_complete,
+      is_admin: !!fullProfile.is_admin,
+      verified: !!user.email_confirmed_at, // [!FIX!] Add the user's verification status here as well
+    };
+    localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+  } else {
+    // Fallback cache if fetch fails for some reason
+    localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid, onboarding_complete: true, verified: true }));
   }
-  
+} catch (e) {
+  console.error("Failed to cache full profile:", e);
+}  
   setSaving(false);
   setSuccess(true);
   

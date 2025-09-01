@@ -26,15 +26,16 @@ function MMToast({ open, type = "error", text = "", onClose }) {
   );
 }
 
-// Ensure profile row exists + cache small user object
+// REPLACE THIS ENTIRE FUNCTION
+
 async function ensureProfileAndCache() {
   const { data: { user } } = await supabase.auth.getUser();
   const authId = user?.id;
   if (!authId) return null;
 
-await supabase
-  .from("profiles")
-  .upsert({ user_id: authId }, { onConflict: "user_id" });
+  await supabase
+    .from("profiles")
+    .upsert({ user_id: authId }, { onConflict: "user_id" });
 
   const { data: prof } = await supabase
     .from("profiles")
@@ -50,6 +51,7 @@ await supabase
     avatar_url: prof?.avatar_url || null,
     onboarding_complete: !!prof?.onboarding_complete,
     is_admin: !!prof?.is_admin,
+    verified: !!user.email_confirmed_at, // [!FIX!] Add the user's verification status
   };
   localStorage.setItem("myanmatch_user", JSON.stringify(cache));
 
