@@ -70,24 +70,41 @@ export default function VerifyCodePage() {
 useEffect(() => {
   let didNav = false;
 
-  const routeFromProfile = async (uid) => {
-    if (!uid || didNav) return;
-    didNav = true;
+// REPLACE THIS ENTIRE FUNCTION INSIDE YOUR useEffect HOOK
 
-    // only create row if missing; do NOT overwrite onboarding flags
-    await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
-    localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid }));
+const routeFromProfile = async (uid) => {
+  if (!uid || didNav) return;
+  didNav = true;
 
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("onboarding_complete,is_admin")
-      .eq("user_id", uid)
-      .maybeSingle();
+  // First, ensure the profile row exists.
+  await supabase.from("profiles").upsert({ user_id: uid }, { onConflict: "user_id" });
 
-    if (prof?.is_admin) { navigate("/admin", { replace: true }); return; }
-    if (prof?.onboarding_complete) { navigate("/HomePage", { replace: true }); return; }
-    navigate("/onboarding/terms", { replace: true });
+  // Second, fetch the full profile to get all necessary details.
+  const { data: user } = await supabase.auth.getUser(); // Get user for verification status
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+    .eq("user_id", uid)
+    .single();
+
+  // Third, create a complete cache object in localStorage. THIS IS THE CRITICAL FIX.
+  const cache = {
+    id: uid,
+    user_id: uid,
+    first_name: prof?.first_name || null,
+    last_name: prof?.last_name || null,
+    avatar_url: prof?.avatar_url || null,
+    onboarding_complete: !!prof?.onboarding_complete,
+    is_admin: !!prof?.is_admin,
+    verified: !!user?.user?.email_confirmed_at, // Add the verification status
   };
+  localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+
+  // Finally, navigate based on the fetched profile data.
+  if (prof?.is_admin) { navigate("/admin", { replace: true }); return; }
+  if (prof?.onboarding_complete) { navigate("/HomePage", { replace: true }); return; }
+  navigate("/onboarding/terms", { replace: true });
+};
 
   // If a session already exists (e.g., user came from the email link), route now.
   (async () => {

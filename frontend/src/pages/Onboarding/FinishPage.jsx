@@ -96,10 +96,12 @@ export default function FinishPage() {
 
 // REPLACE THIS ENTIRE FUNCTION
 
+// REPLACE THE ENTIRE buildPayload FUNCTION WITH THIS
+
 function buildPayload(pd) {
   const out = {};
 
-  // ---- helpers (these are fine) ----
+  // ---- helpers ----
   const toArray = (val) => (val == null ? [] : Array.isArray(val) ? val : [val]);
   const normalizeDate = (val) => {
     if (!val) return null;
@@ -130,37 +132,23 @@ function buildPayload(pd) {
     return Number.isFinite(age) ? age : null;
   };
 
-  // --- [!FIX!] ROBUST MAPPING LOGIC ---
-  // Iterate over the KEY_MAP to find all possible frontend keys
-  // and map them to their corresponding database columns.
+  // --- Robust mapping logic using the KEY_MAP ---
   for (const [frontendKey, dbColumn] of Object.entries(KEY_MAP)) {
-    // If the database column hasn't been filled yet,
-    // and the data for this frontend key exists in the profileData (pd),
-    // then add it to our output payload.
     if (out[dbColumn] === undefined && pd[frontendKey] !== undefined) {
       out[dbColumn] = pd[frontendKey];
     }
   }
 
-  // ---- NOW, PROCEED WITH DATA CLEANUP AND NORMALIZATION ----
-
-  // 2) Ensure birthdate is normalized
+  // ---- Data cleanup and normalization ----
   if ("birthdate" in out) out.birthdate = normalizeDate(out.birthdate);
 
-  // 3) Ensure age is valid; if missing, compute from birthdate
   const ageNum = toNum(out.age);
-  if (ageNum == null) {
-    out.age = computeAgeFromBirthdate(out.birthdate);
-  } else {
-    out.age = ageNum;
-  }
+  out.age = ageNum == null ? computeAgeFromBirthdate(out.birthdate) : ageNum;
 
-  // 4) Normalize array/jsonb-array columns
   for (const key of ARRAY_COLUMNS) {
     if (key in out) out[key] = toArray(out[key]);
   }
 
-  // 5) Media defaults and avatar fallbacks
   const media = Array.isArray(out.media) ? out.media : [];
   const media_paths = Array.isArray(out.media_paths) ? out.media_paths : [];
   out.media = media;
@@ -168,16 +156,10 @@ function buildPayload(pd) {
   if (!out.avatar_url) out.avatar_url = media?.[0]?.url ?? media?.[0] ?? null;
   if (!out.avatar_path) out.avatar_path = media_paths?.[0]?.path ?? media_paths?.[0] ?? null;
   if (typeof out.avatar_index !== "number") out.avatar_index = 0;
-  
-  // 6) Prefer `weed` over legacy `weed_usage` (already handled by new loop)
 
-  // 7) Type fixes for numbers
-  if ("height_ft" in out) out.height_ft = toNum(out.height_ft);
-  if ("height_cm" in out) out.height_cm = toNum(out.height_cm);
   if ("lat" in out) out.lat = toNum(out.lat);
   if ("lng" in out) out.lng = toNum(out.lng);
 
-  // 8) Clean arrays (trim empties)
   for (const key of ARRAY_COLUMNS) {
     if (key in out && Array.isArray(out[key])) {
       out[key] = out[key].filter((x) => (typeof x === "string" ? x.trim() : x != null));
@@ -187,7 +169,6 @@ function buildPayload(pd) {
     out.schools = out.schools.map((s) => (typeof s === "string" ? { name: s.trim() } : s));
   }
 
-  // 9) Set flags & timestamp
   out.agreedToTerms = true;
   out.onboarding_complete = true;
   out.updated_at = new Date().toISOString();
@@ -218,6 +199,8 @@ function apiUrl(path = "") {
 
 // REPLACE THIS ENTIRE FUNCTION
 
+// REPLACE THE ENTIRE handleFinish FUNCTION WITH THIS
+
 const handleFinish = async () => {
   setSaving(true);
   setError("");
@@ -234,23 +217,18 @@ const handleFinish = async () => {
   const payload = buildPayload(profileData || {});
   payload.user_id = uid;
 
-  console.log("Finish payload:", payload);
-
-  // --- Voice Prompt handling (your existing logic is fine) ---
+  // Voice Prompt handling (your existing logic is fine here)
   try {
     const vp = profileData?.voicePrompt;
     let voicePromptJSON = undefined;
-
     if (vp?.file) {
       const fd = new FormData();
       fd.append("user_id", user.id);
       fd.append("prompt", vp.prompt || "");
       fd.append("duration", vp.duration ?? "");
-      fd.append("file", vp.file, `voice.${(vp.file.type || "audio/webm").split("/")[1]?.split(";")[0] || "webm"}`);
-
+      fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
       const url = apiUrl("voice/onboarding/voice");
       const res = await fetch(url, { method: "POST", body: fd });
-
       if (!res.ok) {
         console.error("voice upload failed:", await res.text());
         voicePromptJSON = null;
@@ -262,7 +240,7 @@ const handleFinish = async () => {
           path: data.path || null,
           bucket: data.bucket || "onboarding",
           duration: data.duration ?? vp.duration ?? null,
-          mime: data.mime || (vp.file.type?.split(";")[0]) || "audio/webm",
+          mime: data.mime || baseMime(vp.file.type),
         };
       }
     } else if (vp?.url) {
@@ -270,7 +248,6 @@ const handleFinish = async () => {
     } else if (vp === null) {
       voicePromptJSON = null;
     }
-
     if (voicePromptJSON !== undefined) {
       payload.voicePrompt = voicePromptJSON;
     }
@@ -278,7 +255,7 @@ const handleFinish = async () => {
     console.warn("voice prompt mapping failed:", e);
   }
 
-  // ---- Upsert the final profile ----
+  // Upsert the final profile
   const { error: dbErr } = await supabase
     .from("profiles")
     .upsert(payload, { onConflict: "user_id" });
@@ -290,40 +267,38 @@ const handleFinish = async () => {
     return;
   }
 
-// IN THE handleFinish FUNCTION, REPLACE THE try/catch BLOCK WITH THIS
+  // --- [!CRITICAL FIX!] FETCH THE FULL PROFILE AND CACHE IT CORRECTLY ---
+  try {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+      .eq("user_id", uid)
+      .single();
 
-// --- [!FIX!] FETCH THE FULL PROFILE AND CACHE IT CORRECTLY ---
-try {
-  const { data: fullProfile } = await supabase
-    .from("profiles")
-    .select("user_id, first_name, last_name, avatar_url, onboarding_complete, is_admin")
-    .eq("user_id", uid)
-    .single();
-
-  if (fullProfile) {
-    const cache = {
-      id: uid,
-      user_id: uid,
-      first_name: fullProfile.first_name || null,
-      last_name: fullProfile.last_name || null,
-      avatar_url: fullProfile.avatar_url || null,
-      onboarding_complete: !!fullProfile.onboarding_complete,
-      is_admin: !!fullProfile.is_admin,
-      verified: !!user.email_confirmed_at, // [!FIX!] Add the user's verification status here as well
-    };
-    localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-  } else {
-    // Fallback cache if fetch fails for some reason
-    localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid, onboarding_complete: true, verified: true }));
+    if (fullProfile) {
+      const cache = {
+        id: uid,
+        user_id: uid,
+        first_name: fullProfile.first_name || null,
+        last_name: fullProfile.last_name || null,
+        avatar_url: fullProfile.avatar_url || null,
+        onboarding_complete: !!fullProfile.onboarding_complete,
+        is_admin: !!fullProfile.is_admin,
+        verified: !!user.email_confirmed_at, // Add the user's verification status
+      };
+      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+    } else {
+      // Fallback cache if the fetch fails
+      localStorage.setItem("myanmatch_user", JSON.stringify({ id: uid, user_id: uid, onboarding_complete: true, verified: true }));
+    }
+  } catch (e) {
+    console.error("Failed to cache full profile:", e);
   }
-} catch (e) {
-  console.error("Failed to cache full profile:", e);
-}  
+
   setSaving(false);
   setSuccess(true);
-  
-  // --- [!FIX!] NAVIGATE CORRECTLY INSTEAD OF HARD RELOAD ---
-  // Wait a moment for the success animation, then navigate.
+
+  // --- [!FIX!] NAVIGATE CORRECTLY INSTEAD OF A HARD RELOAD ---
   setTimeout(() => {
     navigate("/HomePage", { replace: true });
   }, 800);
