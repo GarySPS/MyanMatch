@@ -734,32 +734,34 @@ const myId = (() => {
   return typeof id === "string" && /^[0-9a-f-]{20,}$/i.test(id) ? id : null;
 })();
 
+// REPLACE THE ENTIRE useEffect HOOK FOR fetchProfiles
+
   useEffect(() => {
     async function fetchProfiles() {
+      // ... your existing fetchProfiles logic is here ...
       setLoading(true);
 
-if (!myId) {
-  console.warn("HomePage: no valid myId in localStorage; skipping profile fetch.");
-  setProfiles([]);
-  setLoading(false);
-  return;
-}
+      if (!myId) {
+        console.warn("HomePage: no valid myId in localStorage; skipping profile fetch.");
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
 
-// Load my plan + age + coords (for distance) + my preferences
-const { data: me } = await supabase
-  .from("profiles")
-  .select("*")
-  .eq("user_id", myId)
-  .maybeSingle();
+      const { data: me } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", myId)
+        .maybeSingle();
+      
+      const planStr = (me?.membership_plan || (me?.is_plus ? "plus" : "free")).toLowerCase();
+      setPlan(planStr);
 
-const planStr = (me?.membership_plan || (me?.is_plus ? "plus" : "free")).toLowerCase();
-setPlan(planStr);
+      const myAge =
+        typeof me?.age === "number" ? me.age : calcAgeFromBirthdate(me?.birthdate);
 
-const myAge =
-  typeof me?.age === "number" ? me.age : calcAgeFromBirthdate(me?.birthdate);
-
-const myCoordProbe = getCoord(me || {});
-const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng } : null;
+      const myCoordProbe = getCoord(me || {});
+      const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng } : null;
 
       const { data: prefsRow } = await supabase
         .from("preferences")
@@ -767,42 +769,32 @@ const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng
         .eq("user_id", myId)
         .maybeSingle();
 
-// Merge row with defaults so missing columns don't become undefined
-const prefsDefaults = {
-  age_min: 0, age_max: 80, genders: [],
-  smoking: "No preference", drinking: "No preference",
-  weed: "No preference", drugs: "No preference",
-  religion: [], politics: [], family_plans: [], ethnicity: [],
-  relationship: [],
-  education_level: "No preference",
-  verified_only: false, has_voice: false,
-  distance_km: 100,
-};
-const prefs = { ...prefsDefaults, ...(prefsRow || {}) };
+      const prefsDefaults = {
+        age_min: 0, age_max: 80, genders: [],
+        smoking: "No preference", drinking: "No preference",
+        weed: "No preference", drugs: "No preference",
+        religion: [], politics: [], family_plans: [], ethnicity: [],
+        relationship: [],
+        education_level: "No preference",
+        verified_only: false, has_voice: false,
+        distance_km: 100,
+      };
+      const prefs = { ...prefsDefaults, ...(prefsRow || {}) };
 
-// [!FIX!] If user has no gender preference, use their profile's 'interested_in' as a default.
-if ((!prefs.genders || prefs.genders.length === 0) && Array.isArray(me?.interested_in)) {
-  // The normalizeGenderKey function correctly converts "women" to "woman" and "men" to "man"
-  prefs.genders = me.interested_in.map(normalizeGenderKey).filter(Boolean);
-}
+      if ((!prefs.genders || prefs.genders.length === 0) && Array.isArray(me?.interested_in)) {
+        prefs.genders = me.interested_in.map(normalizeGenderKey).filter(Boolean);
+      }
 
-// Distance policy by plan
-const isX = (planStr || "").toLowerCase() === "x";
-const MAX_KM_FREE = 100;
-const MAX_KM_PLUS = 250;
+      const isX = (planStr || "").toLowerCase() === "x";
+      const MAX_KM_FREE = 100;
+      const MAX_KM_PLUS = 250;
+      const xWantsGlobal = isX && Number(prefs.distance_km) >= 9999;
+      const distanceLimitKm = (!myCoord || xWantsGlobal)
+        ? Infinity
+        : (isX
+            ? Math.max(5, Number(prefs.distance_km) || 100)
+            : (planStr === "plus" ? MAX_KM_PLUS : MAX_KM_FREE));
 
-// X can set global by distance_km >= 9999
-const xWantsGlobal = isX && Number(prefs.distance_km) >= 9999;
-
-// Final effective distance limit in km
-// IMPORTANT: if my location is unknown, don't filter by distance.
-const distanceLimitKm = (!myCoord || xWantsGlobal)
-  ? Infinity
-  : (isX
-      ? Math.max(5, Number(prefs.distance_km) || 100)
-      : (planStr === "plus" ? MAX_KM_PLUS : MAX_KM_FREE));
-
-      // Build exclude list
       const { data: passes } = await supabase
         .from("pass").select("to_user_id").eq("from_user_id", myId);
       const passedIds = (passes ?? []).map(p => p.to_user_id);
@@ -813,12 +805,10 @@ const distanceLimitKm = (!myCoord || xWantsGlobal)
 
       const excludeIds = Array.from(new Set([myId, ...passedIds, ...likedIds]));
 
-      // Base query
-let q = supabase
-  .from("profiles")
-  .select("*")
-  .neq("user_id", myId);
-
+      let q = supabase
+        .from("profiles")
+        .select("*")
+        .neq("user_id", myId);
 
       if (excludeIds.length > 1) {
         const others = excludeIds.filter(id => id !== myId);
@@ -826,13 +816,12 @@ let q = supabase
         q = q.not("user_id", "in", excludeSql);
       }
 
-// Optional server-side prefilters
-const wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey);
-if (wantGenders.length === 1) {
-  q = q.eq("gender", wantGenders[0]);
-} else if (wantGenders.length > 1) {
-  q = q.in("gender", wantGenders);
-}
+      const wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey);
+      if (wantGenders.length === 1) {
+        q = q.eq("gender", wantGenders[0]);
+      } else if (wantGenders.length > 1) {
+        q = q.in("gender", wantGenders);
+      }
 
       if (prefs.verified_only) {
         q = q.eq("is_verified", true);
@@ -846,31 +835,22 @@ if (wantGenders.length === 1) {
         return;
       }
 
-// Compute distance for each candidate (Infinity if no coords or no myCoord)
-const withDist = (data || []).map((u) => {
-  const c = getCoord(u);
-  const d = (myCoord && c.ok) ? distanceKm(myCoord.lat, myCoord.lng, c.lat, c.lng) : Infinity;
-  return { ...u, _distKm: d };
-});
+      const withDist = (data || []).map((u) => {
+        const c = getCoord(u);
+        const d = (myCoord && c.ok) ? distanceKm(myCoord.lat, myCoord.lng, c.lat, c.lng) : Infinity;
+        return { ...u, _distKm: d };
+      });
 
-// Client-side filtering: prefs + distance (distance ignored when Infinity)
-const filtered = withDist.filter((u) => {
-  if (!matchesPreferences(u, prefs, myAge)) return false;
+      const filtered = withDist.filter((u) => {
+        if (!matchesPreferences(u, prefs, myAge)) return false;
+        if (distanceLimitKm === Infinity) return true;
+        if (!Number.isFinite(u._distKm)) return true;
+        return u._distKm <= distanceLimitKm;
+      });
 
-  // Distance gate
-  if (distanceLimitKm === Infinity) return true;              // no distance limit
-  if (!Number.isFinite(u._distKm)) return true;               // candidate w/o coords -> keep
-  return u._distKm <= distanceLimitKm;
-});
-
-// Sort: 1) nearest first  2) then closest age to me
+// Sort: 1) closest age to me,  2) then nearest first
 const sorted = filtered.slice().sort((a, b) => {
-  const da = a._distKm, db = b._distKm;
-  const distCmp =
-    (Number.isFinite(da) ? da : Number.POSITIVE_INFINITY) -
-    (Number.isFinite(db) ? db : Number.POSITIVE_INFINITY);
-  if (distCmp !== 0) return distCmp;
-
+  // --- PRIORITY 1: SORT BY CLOSEST AGE ---
   const aAge = getAge(a);
   const bAge = getAge(b);
   const my = Number.isFinite(myAge) ? myAge : 200; // fallback
@@ -878,15 +858,40 @@ const sorted = filtered.slice().sort((a, b) => {
   const aDelta = Number.isFinite(aAge) ? Math.abs(aAge - my) : Number.POSITIVE_INFINITY;
   const bDelta = Number.isFinite(bAge) ? Math.abs(bAge - my) : Number.POSITIVE_INFINITY;
 
-  return aDelta - bDelta;
+  const ageCmp = aDelta - bDelta;
+  if (ageCmp !== 0) return ageCmp; // Return if ages are different
+
+  // --- PRIORITY 2: SORT BY NEAREST DISTANCE (as a tie-breaker) ---
+  const da = a._distKm, db = b._distKm;
+  const distCmp =
+    (Number.isFinite(da) ? da : Number.POSITIVE_INFINITY) -
+    (Number.isFinite(db) ? db : Number.POSITIVE_INFINITY);
+  
+  return distCmp;
 });
 
-setProfiles(sorted);
+      setIndex(0); // Reset to the first card on every refresh
+      setProfiles(sorted);
       setLoading(false);
     }
 
+    // Run once on initial load
     fetchProfiles();
-  }, [myId]);
+
+    // [!FIX!] Add event listener to re-fetch when the page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProfiles();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup the listener when the component unmounts
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [myId]); // The dependency array stays the same
 
   /* ---------- early outs ---------- */
   if (loading) {
