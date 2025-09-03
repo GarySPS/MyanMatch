@@ -780,6 +780,12 @@ const prefsDefaults = {
 };
 const prefs = { ...prefsDefaults, ...(prefsRow || {}) };
 
+// [!FIX!] If user has no gender preference, use their profile's 'interested_in' as a default.
+if ((!prefs.genders || prefs.genders.length === 0) && Array.isArray(me?.interested_in)) {
+  // The normalizeGenderKey function correctly converts "women" to "woman" and "men" to "man"
+  prefs.genders = me.interested_in.map(normalizeGenderKey).filter(Boolean);
+}
+
 // Distance policy by plan
 const isX = (planStr || "").toLowerCase() === "x";
 const MAX_KM_FREE = 100;
