@@ -231,18 +231,18 @@ const newExpiry = isUpgradeToX ? expiresAt : addDaysISO(SUB_DURATION_DAYS);
   }
 }
 
+// REPLACE WITH THIS BLOCK
+  const isExpired = planNorm !== 'free' && expiresAt && new Date(expiresAt).getTime() <= Date.now();
+  
+  const isPlusActive = planNorm === 'plus' && !isExpired;
+  const isXActive = planNorm === 'x' && !isExpired;
+  
+  const canBuyPlus = !isPlusActive && !isXActive;
+  const canBuyX = !isXActive;
+  const showUpgradeBtn = isPlusActive; // This simplifies the upgrade button text logic
 
-const alreadyPlus = planNorm === "plus";
-const alreadyX = planNorm === "x";
-const showUpgradeBtn = alreadyPlus && !alreadyX;
-const xActive = alreadyX && expiresAt && new Date(expiresAt).getTime() > Date.now();
-const canBuyX = showUpgradeBtn || !xActive;
-
-const plusActive = alreadyPlus && expiresAt && new Date(expiresAt).getTime() > Date.now();
-const canBuyPlus = !plusActive && !xActive; // block while PLUS or X is active
-
-const isActivePaid = (alreadyPlus || alreadyX) && !!expiresAt;
-const expired = isActivePaid && new Date(expiresAt).getTime() <= Date.now();
+  // This is used for displaying the "Expires on..." or "Expired" message
+  const isActivePaid = (planNorm === 'plus' || planNorm === 'x') && !!expiresAt;
 
   return (
     <Layout title={t("pricing.titleWindow")}>
@@ -335,7 +335,7 @@ const expired = isActivePaid && new Date(expiresAt).getTime() <= Date.now();
                 ))}
               </ul>
               
-{/* PLUS action button (corrected) */}
+// REPLACE WITH THIS BUTTON
 <button
   className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
     ${
@@ -346,8 +346,8 @@ const expired = isActivePaid && new Date(expiresAt).getTime() <= Date.now();
   disabled={!canBuyPlus || busy}
   onClick={() => {
     if (!canBuyPlus) {
-      if (plusActive) setMessage(t("pricing.msg.plusAlreadyActive", { date: fmtDate(expiresAt) }));
-      else if (xActive) setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
+      if (isPlusActive) setMessage(t("pricing.msg.plusAlreadyActive", { date: fmtDate(expiresAt) }));
+      else if (isXActive) setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
       return;
     }
     purchase("plus");
@@ -355,8 +355,8 @@ const expired = isActivePaid && new Date(expiresAt).getTime() <= Date.now();
   type="button"
 >
   <FaCrown />
-  {alreadyPlus
-    ? t("pricing.btn.renewPlus", { price: fmtCoins(prices.plus) }) // shows if PLUS expired
+  {planNorm === 'plus' && isExpired
+    ? t("pricing.btn.renewPlus", { price: fmtCoins(prices.plus) })
     : t("pricing.btn.getPlus", { price: fmtCoins(prices.plus) })}
 </button>
 
@@ -403,23 +403,30 @@ const expired = isActivePaid && new Date(expiresAt).getTime() <= Date.now();
                 ))}
               </ul>
 
-              <button
-                className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
-                  ${
-                    false
-                      ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
-                      : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
-                  }`}
-                disabled={busy}
-                onClick={() => purchase("x")}
-              >
-                <FaBolt />
-                {alreadyX
-                  ? t("pricing.btn.renewX", { price: fmtCoins(prices.x) })
-                  : showUpgradeBtn
-                  ? t("pricing.btn.upgradeToX", { price: fmtCoins(prices.upgrade) })
-                  : t("pricing.btn.getX", { price: fmtCoins(prices.x) })}
-              </button>
+// REPLACE WITH THIS BUTTON
+<button
+  className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
+    ${
+      !canBuyX || busy
+        ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
+        : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
+    }`}
+  disabled={!canBuyX || busy}
+  onClick={() => {
+      if (!canBuyX) {
+        setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
+        return;
+      }
+      purchase("x");
+  }}
+>
+  <FaBolt />
+  {planNorm === 'x' && isExpired
+    ? t("pricing.btn.renewX", { price: fmtCoins(prices.x) })
+    : showUpgradeBtn
+    ? t("pricing.btn.upgradeToX", { price: fmtCoins(prices.upgrade) })
+    : t("pricing.btn.getX", { price: fmtCoins(prices.x) })}
+</button>
 
             </div>
           </div>

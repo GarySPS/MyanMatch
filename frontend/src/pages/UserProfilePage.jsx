@@ -1106,7 +1106,7 @@ function renderMedia(idx) {
           <span className="inline-flex items-center gap-2">
             <span>{user._short_id}</span>
             <button
-              onClick={() => { navigator.clipboard.writeText(String(user._short_id)); showToast(t("profile.copied") || "Copied"); }}
+              onClick={() => { navigator.clipboard.writeText(String(user._short_id)); showToast(t("ID copied") || "Copied"); }}
               className="px-2 py-0.5 text-[11px] rounded-lg bg-white/10 border border-white/15"
             >
               {t("copy") || "Copy"}

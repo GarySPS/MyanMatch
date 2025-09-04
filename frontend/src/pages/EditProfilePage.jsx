@@ -937,130 +937,108 @@ try {
     setVitals((prev) => ({ ...prev, birthdate: iso, age: computeAge(iso) }));
   };
 
-  const handleSave = async () => {
-    if (!userId) return;
-    setSaving(true);
+// src/pages/EditProfilePage.jsx
 
-// 1) Upload any new files and produce final URL list
-const uploaded = [];
-const nextPhotos = [...photos]; // clone, don't mutate state directly
+// REPLACE THIS ENTIRE FUNCTION
 
-for (let i = 0; i < nextPhotos.length; i++) {
-  const slot = nextPhotos[i];
-  if (!slot) { uploaded[i] = null; continue; }
+const handleSave = async () => {
+  if (!userId) return;
+  setSaving(true);
 
-  if (slot.file) {
-    // delete previous file for this slot first
-    if (slot.path) {
-      try {
-        await supabase.storage.from("media").remove([slot.path]);
-      } catch (e) {
-        console.warn("Could not remove previous file:", slot.path, e);
+  // 1) Upload any new files and produce final media/path lists
+  const uploadedUrls = [];
+  const nextPhotosState = [...photos]; // Clone to update paths after upload
+  const mediaPaths = [];
+
+  for (let i = 0; i < nextPhotosState.length; i++) {
+    const slot = nextPhotosState[i];
+    if (!slot) continue;
+
+    if (slot.file) { // This is a new file that needs uploading
+      if (slot.path) { // If it's replacing an old photo, delete the old one
+        try {
+          await supabase.storage.from("media").remove([slot.path]);
+        } catch (e) {
+          console.warn("Could not remove previous file:", slot.path, e);
+        }
       }
+
+      const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
+      const newPath = `${userId}/media/${Date.now()}_${i}.${ext}`;
+
+      const { error: upErr } = await supabase.storage.from("media").upload(newPath, slot.file, { upsert: true });
+
+      if (upErr) {
+        showToast(t("edit.toast.photoFail"), "error");
+        setSaving(false);
+        return;
+      }
+
+      const { data: pub } = supabase.storage.from("media").getPublicUrl(newPath);
+      uploadedUrls.push(pub.publicUrl);
+      mediaPaths.push(newPath);
+      nextPhotosState[i] = { url: pub.publicUrl, path: newPath }; // Update the cloned state
+    } else if (slot.url) { // This is an existing photo
+      uploadedUrls.push(slot.url);
+      if (slot.path) mediaPaths.push(slot.path);
     }
-
-    const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${userId}/media/${Date.now()}_${i}.${ext}`;
-
-    const { error: upErr } = await supabase
-      .storage
-      .from("media")
-      .upload(path, slot.file, { upsert: true });
-
-    if (upErr) {
-      console.error("upload error", upErr);
-      showToast(t("edit.toast.photoFail"), "error");
-      setSaving(false);
-      return;
-    }
-
-    const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
-    uploaded[i] = pub.publicUrl;
-    nextPhotos[i] = { url: pub.publicUrl, path }; // update the clone
-  } else {
-    uploaded[i] = slot.url || null;
   }
-}
 
-    // 2) Delete any paths collected by the trash button (removePhoto)
-    if (deletedPathsRef.current.length) {
-      try {
-        await supabase.storage.from("media").remove(deletedPathsRef.current);
-      } catch (e) {
-        console.warn("Some deletes failed:", e);
-      } finally {
-        deletedPathsRef.current = [];
-      }
+  // Delete any photos explicitly removed via the trash icon
+  if (deletedPathsRef.current.length) {
+    try {
+      await supabase.storage.from("media").remove(deletedPathsRef.current);
+    } catch (e) {
+      console.warn("Some photo deletes failed:", e);
+    } finally {
+      deletedPathsRef.current = [];
     }
+  }
+  
+  setPhotos(nextPhotosState); // Update UI state with new paths/urls
 
-    const media = uploaded.filter(Boolean);
-    const media_paths = nextPhotos.map(s => s?.path).filter(Boolean);
-    setPhotos(nextPhotos); // commit updated photos back to state
+  // 2) Build the final payload for the database
+  const voiceBlock = voiceMeta
+    ? { ...voiceMeta, prompt: voicePromptKey || voiceMeta.prompt || "", prompt_key: voicePromptKey || voiceMeta.prompt_key || "" }
+    : (voiceUrl ? { url: voiceUrl, prompt: voicePromptKey || "", prompt_key: voicePromptKey || "" } : null);
 
-    // 3) Build payload and save
-    const ethnicityText =
-      Array.isArray(vitals.ethnicity) ? JSON.stringify(vitals.ethnicity) : (vitals.ethnicity || null);
-    const religionText =
-      Array.isArray(vitals.religion) ? JSON.stringify(vitals.religion) : (vitals.religion || null);
-// Build voice block once (so selection saves even without re-upload)
-const voiceBlock = voiceMeta
-  ? { ...voiceMeta, prompt: voicePromptKey || voiceMeta.prompt || "", prompt_key: voicePromptKey || voiceMeta.prompt_key || "" }
-  : (voiceUrl ? { url: voiceUrl, prompt: voicePromptKey || "", prompt_key: voicePromptKey || "" } : null);
+  const safePayload = {
+    ...vitals, // Spreads all the simple text fields like first_name, gender, etc.
+    
+    // [!THE BUG FIX IS HERE!]
+    // Ensure arrays are saved as native text arrays, not JSON strings.
+    ethnicity: Array.isArray(vitals.ethnicity) ? vitals.ethnicity : [],
+    religion: Array.isArray(vitals.religion) ? vitals.religion : [],
+    family_plans: Array.isArray(vitals.family_plans) ? vitals.family_plans : [],
+    schools: Array.isArray(vitals.schools) ? vitals.schools : [],
 
+    // Update media fields
+    media: uploadedUrls,       // For compatibility, stores public URLs
+    media_paths: mediaPaths,   // Stores storage paths for easier management
+    photos: uploadedUrls,      // Legacy text[] field for photos
 
-    const safePayload = {
-      first_name:       vitals.first_name || null,
-      last_name:        vitals.last_name || null,
-      gender:           vitals.gender || null,
-      birthdate:        vitals.birthdate || null,
-      age:              vitals.age || null,
-      height:           vitals.height || null,
-      hometown:         vitals.hometown || null,
-      location:         vitals.location || null,
-      children:         vitals.children || null,
-      family_plans:     vitals.family_plans || null,
-      sexuality:        vitals.sexuality || null,
-      job_title:        vitals.job_title || null,
-      workplace:        vitals.workplace || null,
-      education_level:  vitals.education_level || null,
-      political_belief: vitals.political_belief || null,
-      relationship:     vitals.relationship || null, // text
-      drinking:         vitals.drinking || null,
-      smoking:          vitals.smoking || null,
-      weed:             vitals.weed || null,         // text
-      drugs:            vitals.drugs || null,
-
-      ethnicity:        ethnicityText,               // text column holding JSON string
-      religion:         religionText,                // text column holding JSON string
-
-// arrays/jsonb
-schools: Array.isArray(vitals.schools) ? vitals.schools : [],
-media,            // jsonb (public URLs)
-media_paths,      // storage keys for future edits/cleanup
-photos: media,    // if you still mirror to text[]
-prompts,          // jsonb
-
-voicePrompt: voiceBlock,
-onboarding_complete: true,
-updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from("profiles")
-      .update(safePayload)
-      .eq("user_id", userId);
-
-    setSaving(false);
-
-    if (error) {
-      console.error("Save error:", {
-        message: error.message, details: error.details, hint: error.hint, code: error.code
-      });
-      showToast(t("edit.toast.saveFail"), "error");
-    } else {
-      showToast(t("edit.toast.saveOk"), "success");
-    }
+    // Update other fields
+    prompts,
+    voicePrompt: voiceBlock,
+    onboarding_complete: true,
+    updated_at: new Date().toISOString(),
   };
+
+  // 3) Update the database
+  const { error } = await supabase
+    .from("profiles")
+    .update(safePayload)
+    .eq("user_id", userId);
+
+  setSaving(false);
+
+  if (error) {
+    console.error("Save error:", error);
+    showToast(t("edit.toast.saveFail"), "error");
+  } else {
+    showToast(t("edit.toast.saveOk"), "success");
+  }
+};
 
   // gender UI capitalized
   const genderUiValue = vitals.gender ? vitals.gender.charAt(0).toUpperCase() + vitals.gender.slice(1) : "";
