@@ -194,7 +194,7 @@ useEffect(() => {
       if (!alive) return;
 
       const p = pRes.data || {};
-      const k = kycRes.data || null; // <<< THIS IS THE CRITICAL FIX
+      const k = kycRes.data || null; // <<< This line fixes the bug
 
       setProfileRow(p);
 
