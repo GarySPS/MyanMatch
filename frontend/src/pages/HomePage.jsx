@@ -802,6 +802,7 @@ const myId = (() => {
       let q = supabase
         .from("profiles")
         .select("*")
+        .eq('is_bot', false)
         .not("user_id", "in", `(${excludeIds.map(id => `'${id}'`).join(",")})`);
 
       // [!THE BUG FIX IS HERE!]
