@@ -170,41 +170,44 @@ export default function VerifyYourIdentityPage() {
     return [first, second];
   }, []);
 
-  // Load kyc fields from users, avatar from profiles (if any) + latest KYC row for banner
-  useEffect(() => {
+useEffect(() => {
     let alive = true;
     (async () => {
       if (!myId) return;
 
-const [pRes, kycRes] = await Promise.all([
-  supabase
-    .from("profiles")
-    .select("user_id, username, kyc_status, verified, verified_at, last_kyc_request_id, media, avatar_url, avatar_path, is_verified")
-    .eq("user_id", myId)
-    .maybeSingle(),
-  supabase
-    .from("kyc_requests")
-    .select("id,status,notes,created_at")
-    .eq("user_id", myId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle(),
-]);
+      const [pRes, kycRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, username, kyc_status, verified, verified_at, last_kyc_request_id, media, avatar_url, avatar_path, is_verified")
+          .eq("user_id", myId)
+          .maybeSingle(),
+        supabase
+          .from("kyc_requests")
+          .select("id,status,notes,created_at")
+          .eq("user_id", myId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-const p = pRes.data || {};
-setProfileRow(p);
+      if (!alive) return;
 
-const avatarUrl = await resolveAvatar(p || {});
-const verified = !!p?.verified_at || !!p?.is_verified || !!p?.verified;
-const kyc_status = p?.kyc_status || kycRes.data?.status || null;
+      const p = pRes.data || {};
+      const k = kycRes.data || null; // <<< THIS LINE FIXES THE BUG
 
-setUserRow({
-  id: myId,
-  username: p?.username || null,
-  kyc_status,
-  verified,
-  avatar_url: avatarUrl
-});
+      setProfileRow(p);
+
+      const avatarUrl = resolveAvatar(p); // Use resolveAvatar without await
+      const verified = !!p?.verified_at || !!p?.is_verified || !!p?.verified;
+      const kyc_status = p?.kyc_status || k?.status || null;
+
+      setUserRow({
+        id: myId,
+        username: p?.username || null,
+        kyc_status,
+        verified,
+        avatar_url: avatarUrl
+      });
       setLastKyc(k);
 
       if (k && k.status === "denied") {

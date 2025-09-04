@@ -9,7 +9,10 @@ const API_BASE = "";
 const kycUrl = (path) => {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
-  return supabase.storage.from("kyc").getPublicUrl(path).data.publicUrl;
+
+  // This is the corrected, safe version.
+  const { data } = supabase.storage.from("kyc").getPublicUrl(path);
+  return data?.publicUrl || ""; // This ?. prevents the crash.
 };
 
 export default function AdminDashboard() {
