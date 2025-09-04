@@ -170,6 +170,7 @@ export default function VerifyYourIdentityPage() {
     return [first, second];
   }, []);
 
+// REPLACE THE ENTIRE useEffect HOOK WITH THIS
 useEffect(() => {
     let alive = true;
     (async () => {
@@ -193,11 +194,11 @@ useEffect(() => {
       if (!alive) return;
 
       const p = pRes.data || {};
-      const k = kycRes.data || null; // <<< THIS LINE FIXES THE BUG
+      const k = kycRes.data || null; // This was the bug
 
       setProfileRow(p);
 
-      const avatarUrl = resolveAvatar(p); // Use resolveAvatar without await
+      const avatarUrl = resolveAvatar(p);
       const verified = !!p?.verified_at || !!p?.is_verified || !!p?.verified;
       const kyc_status = p?.kyc_status || k?.status || null;
 

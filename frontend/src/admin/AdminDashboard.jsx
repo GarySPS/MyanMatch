@@ -10,9 +10,9 @@ const kycUrl = (path) => {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
 
-  // This is the corrected, safe version.
+  // This version is safe and will not crash
   const { data } = supabase.storage.from("kyc").getPublicUrl(path);
-  return data?.publicUrl || ""; // This ?. prevents the crash.
+  return data?.publicUrl || "";
 };
 
 export default function AdminDashboard() {
