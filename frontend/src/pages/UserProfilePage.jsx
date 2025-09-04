@@ -672,62 +672,61 @@ function showToast(text, type = "success") {
   const viewingUserId = id || userId || myId; // if no param, show self
   const isSelf = viewingUserId && myId && String(viewingUserId) === String(myId);
 
+// src/pages/UserProfilePage.jsx
+
 // REPLACE THIS ENTIRE useEffect HOOK
 
   useEffect(() => {
     async function run() {
       setLoading(true);
 
-      // my plan (for daily gate)
+      // 1. Fetch my own plan (for daily action limits)
       if (myId) {
-        try {
-          const { data: meRow } = await supabase
-            .from("profiles")
-            .select("membership_plan")
-            .eq("user_id", myId)
-            .single();
-          setPlan(meRow?.membership_plan || "free");
-        } catch (e) {
-          console.warn("Could not fetch current user plan", e);
-          setPlan("free");
-        }
+        const { data: meRow } = await supabase
+          .from("profiles")
+          .select("membership_plan")
+          .eq("user_id", myId)
+          .maybeSingle(); // Use maybeSingle to prevent errors if my own profile is somehow missing
+        setPlan(meRow?.membership_plan || "free");
       }
 
-      // viewed profile
+      // 2. Stop if we don't know who to look for
       if (!viewingUserId) {
         setUser(null);
         setLoading(false);
         return;
       }
 
+      // 3. Fetch the viewed user's main profile and supplementary data together
       const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
+        // The main profile data is essential
         supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-        // [!FIX!] Fetches from the 'app_users' table using the correct 'user_id' column
-        supabase.from("app_users").select("user_id, short_id, kyc_status").eq("user_id", viewingUserId).maybeSingle(),
+        // [!FIX!] Fetches supplementary data from 'app_users' using the standard 'id' column, which is more robust.
+        supabase.from("app_users").select("id, short_id, verified_at").eq("id", viewingUserId).maybeSingle(),
       ]);
 
-      if (profErr || uerr) {
+      // 4. [!FIX!] Simplified and corrected logic. Show "Not Found" if there's any error OR if the main profile is missing.
+      if (profErr || uerr || !prof) {
         if (profErr) console.error("Fetch profile error:", profErr);
         if (uerr) console.error("Fetch user error:", uerr);
+        if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
         setUser(null);
-      } else if (prof) { // [!FIX!] Ensure the profile exists before setting the user
-        // The 'verified' flag should come from the 'profiles' table.
-        const verified = !!(prof?.is_verified);
+      } else {
+        // If we get here, 'prof' is guaranteed to be a valid object.
+        // The verified status can come from either table for flexibility.
+        const verified = !!(prof.is_verified) || !!(urow?.verified_at);
         setUser({
-          ...(prof || {}),
+          ...prof, // No need for (prof || {})
           _verified: verified,
           _kyc_status: urow?.kyc_status || null,
           _short_id: urow?.short_id || null,
         });
-      } else {
-        // If no profile is found, set user to null to show the "Not Found" page
-        setUser(null);
       }
       setLoading(false);
     }
 
     run();
-  }, [viewingUserId, myId]);
+  }, [viewingUserId, myId]); 
 
   if (loading) {
     return (
