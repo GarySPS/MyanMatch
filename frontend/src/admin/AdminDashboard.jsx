@@ -303,6 +303,7 @@ export default function AdminDashboard() {
   async function approveKyc(req) {
     const now = new Date().toISOString();
 
+    // 1. Update the KYC request itself to 'approved'
     const { error: kycErr } = await supabase
       .from("kyc_requests")
       .update({
@@ -313,31 +314,31 @@ export default function AdminDashboard() {
       .eq("id", req.id);
     if (kycErr) return alert(kycErr.message);
 
-    const [{ error: uErr }, { error: pErr }] = await Promise.all([
-      supabase
-        .from("users")
-        .update({
-          verified_at: now,
-          last_kyc_request_id: req.id,
-          kyc_status: "approved",
-        })
-        .eq("id", req.user_id),
-      supabase
-        .from("profiles")
-        .update({ is_verified: true })
-        .eq("user_id", req.user_id),
-    ]);
-    if (uErr) return alert(uErr.message);
+    // 2. Update the user's main profile with all verification fields
+    const { error: pErr } = await supabase
+      .from("profiles")
+      .update({
+        is_verified: true,
+        verified: true,
+        verified_at: now,
+        last_kyc_request_id: req.id,
+        kyc_status: "approved",
+      })
+      .eq("user_id", req.user_id);
+
     if (pErr) return alert(pErr.message);
 
     await load();
   }
+
+// src/pages/AdminDashboard.jsx
 
   async function denyKyc(req) {
     const reason =
       prompt("Reason to deny? (visible to user)", req.notes || "") || "";
     const now = new Date().toISOString();
 
+    // 1. Update the KYC request itself to 'denied'
     const { error: kycErr } = await supabase
       .from("kyc_requests")
       .update({
@@ -348,21 +349,18 @@ export default function AdminDashboard() {
       .eq("id", req.id);
     if (kycErr) return alert(kycErr.message);
 
-    const [{ error: uErr }, { error: pErr }] = await Promise.all([
-      supabase
-        .from("users")
-        .update({
-          verified_at: null,
-          last_kyc_request_id: req.id,
-          kyc_status: "denied",
-        })
-        .eq("id", req.user_id),
-      supabase
-        .from("profiles")
-        .update({ is_verified: false })
-        .eq("user_id", req.user_id),
-    ]);
-    if (uErr) return alert(uErr.message);
+    // 2. Update the user's main profile, clearing verification
+    const { error: pErr } = await supabase
+      .from("profiles")
+      .update({
+        is_verified: false,
+        verified: false,
+        verified_at: null,
+        last_kyc_request_id: req.id,
+        kyc_status: "denied",
+      })
+      .eq("user_id", req.user_id);
+
     if (pErr) return alert(pErr.message);
 
     await load();
