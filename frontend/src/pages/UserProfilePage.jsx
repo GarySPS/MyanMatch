@@ -672,18 +672,25 @@ function showToast(text, type = "success") {
   const viewingUserId = id || userId || myId; // if no param, show self
   const isSelf = viewingUserId && myId && String(viewingUserId) === String(myId);
 
+// REPLACE THIS ENTIRE useEffect HOOK
+
   useEffect(() => {
     async function run() {
       setLoading(true);
 
       // my plan (for daily gate)
       if (myId) {
-        const { data: meRow } = await supabase
-          .from("profiles")
-          .select("membership_plan")
-          .eq("user_id", myId)
-          .single();
-        setPlan(meRow?.membership_plan || "free");
+        try {
+          const { data: meRow } = await supabase
+            .from("profiles")
+            .select("membership_plan")
+            .eq("user_id", myId)
+            .single();
+          setPlan(meRow?.membership_plan || "free");
+        } catch (e) {
+          console.warn("Could not fetch current user plan", e);
+          setPlan("free");
+        }
       }
 
       // viewed profile
@@ -693,25 +700,28 @@ function showToast(text, type = "success") {
         return;
       }
 
-const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
-  supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-  // [!FIX!] Fetches from the correct 'app_users' table now
-  supabase.from("app_users").select("id, short_id").eq("id", viewingUserId).maybeSingle(),
-]);
+      const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
+        // [!FIX!] Fetches from the 'app_users' table using the correct 'user_id' column
+        supabase.from("app_users").select("user_id, short_id, kyc_status").eq("user_id", viewingUserId).maybeSingle(),
+      ]);
 
       if (profErr || uerr) {
         if (profErr) console.error("Fetch profile error:", profErr);
         if (uerr) console.error("Fetch user error:", uerr);
         setUser(null);
-      } else {
-        // derived verified flag from either table
-        const verified = !!(prof?.is_verified) || !!(urow?.verified_at);
+      } else if (prof) { // [!FIX!] Ensure the profile exists before setting the user
+        // The 'verified' flag should come from the 'profiles' table.
+        const verified = !!(prof?.is_verified);
         setUser({
-  ...(prof || {}),
-  _verified: verified,
-  _kyc_status: urow?.kyc_status || null,
-  _short_id: urow?.short_id || null, // only shown if isSelf
-});
+          ...(prof || {}),
+          _verified: verified,
+          _kyc_status: urow?.kyc_status || null,
+          _short_id: urow?.short_id || null,
+        });
+      } else {
+        // If no profile is found, set user to null to show the "Not Found" page
+        setUser(null);
       }
       setLoading(false);
     }
