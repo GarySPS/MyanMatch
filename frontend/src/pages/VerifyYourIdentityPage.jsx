@@ -170,7 +170,7 @@ export default function VerifyYourIdentityPage() {
     return [first, second];
   }, []);
 
-// REPLACE THE ENTIRE useEffect HOOK WITH THIS
+
 useEffect(() => {
     let alive = true;
     (async () => {
@@ -194,7 +194,7 @@ useEffect(() => {
       if (!alive) return;
 
       const p = pRes.data || {};
-      const k = kycRes.data || null; // This was the bug
+      const k = kycRes.data || null; // <<< THIS IS THE CRITICAL FIX
 
       setProfileRow(p);
 
@@ -222,7 +222,7 @@ useEffect(() => {
     return () => {
       alive = false;
     };
-  }, [myId]);
+}, [myId]);
 
   // compute hashes to prevent submitting identical selfies
   useEffect(() => {
