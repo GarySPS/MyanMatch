@@ -715,7 +715,6 @@ async function denyKyc(req) {
                 <Row key={r.user_id}>
                   <Cell>{r.username}</Cell>
                   <Cell>{r.email}</Cell>
-                  <Cell>{r.password}</Cell>
                   <Cell center>{r.count}</Cell>
                   <Cell>
                     <ul className="list-disc pl-4">
@@ -782,7 +781,6 @@ async function denyKyc(req) {
                 <Row key={r.user_id}>
                   <Cell>{r.username}</Cell>
                   <Cell>{r.email}</Cell>
-                  <Cell>{r.password}</Cell>
                   <Cell center className="font-bold text-red-300">
                     {r.count}
                   </Cell>
