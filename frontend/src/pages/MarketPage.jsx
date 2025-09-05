@@ -324,43 +324,76 @@ export default function MarketPage() {
     }
   }
 
+// src/pages/MarketPage.jsx
+
   async function submitDepositProof() {
     if (!depositMethod) return showToast(t("market.deposit.chooseMethod"));
     if (!proofFile) return showToast(t("market.deposit.uploadScreenshotFirst"));
+
+    setUploading(true);
+    setDepositErr("");
+    setDepositMsg("");
+
+    let tempTxId = null;
+
     try {
-      setUploading(true);
-      const ext = (proofFile.name.split(".").pop() || "png").toLowerCase();
-      const path = `${userId}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("deposit-proofs")
-        .upload(path, proofFile, { upsert: false, contentType: proofFile.type || "image/png" });
-      if (upErr) throw upErr;
-
-      const { data: pub } = supabase.storage.from("deposit-proofs").getPublicUrl(path);
-      const screenshotUrl = pub?.publicUrl;
+      // Step 1: Insert a placeholder record into the database first.
+      // This ensures that any Storage RLS policies that check the table will pass.
       const chosen = PAYMENT_METHODS.find((m) => m.key === depositMethod);
-
-      await supabase
+      const { data: newTx, error: insErr } = await supabase
         .from("wallet_transactions")
-        .insert([{
+        .insert({
           user_id: userId,
           type: "deposit",
           status: "pending",
-          amount: null,
+          amount: null, // Admin will fill this
           payment_method: depositMethod,
           tx_ref: noTxRef ? null : txRef.trim(),
-          screenshot_url: screenshotUrl,
+          screenshot_url: 'uploading...', // Temporary placeholder
           detail: chosen?.label || depositMethod,
-        }], { returning: "minimal" });
+        })
+        .select('id')
+        .single();
 
+      if (insErr) throw insErr;
+      tempTxId = newTx.id;
+
+      // Step 2: Now that the record exists, create a unique path and upload the file.
+      const ext = (proofFile.name.split(".").pop() || "png").toLowerCase();
+      const path = `${userId}/${tempTxId}.${ext}`;
+      
+      const { error: upErr } = await supabase.storage
+        .from("deposit-proofs")
+        .upload(path, proofFile, { upsert: false, contentType: proofFile.type || "image/png" });
+
+      if (upErr) throw upErr; // This will trigger the catch block for cleanup
+
+      // Step 3: Get the file's final public URL.
+      const { data: pub } = supabase.storage.from("deposit-proofs").getPublicUrl(path);
+      const screenshotUrl = pub?.publicUrl;
+
+      // Step 4: Update the database record with the correct screenshot URL.
+      const { error: updErr } = await supabase
+        .from("wallet_transactions")
+        .update({ screenshot_url: screenshotUrl })
+        .eq("id", tempTxId);
+      
+      if (updErr) throw updErr;
+
+      // Step 5: Success! Reset the form and refresh all data.
       setTxRef("");
       setProofFile(null);
-      setDepositErr("");
       setDepositMsg(t("market.deposit.msgSubmitted"));
-      fetchAll();
+      await fetchAll();
+
     } catch (e) {
+      // If any step failed, delete the record we created to avoid orphaned data.
+      if (tempTxId) {
+        await supabase.from("wallet_transactions").delete().eq("id", tempTxId);
+      }
       setDepositMsg("");
       setDepositErr(e.message || t("market.deposit.msgError"));
+      console.error("Deposit submission failed:", e);
     } finally {
       setUploading(false);
     }
