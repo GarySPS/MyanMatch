@@ -88,48 +88,47 @@ export default function AdminDashboard() {
     }
   }
 
-  async function load() {
-    const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url"
-        )
-        .eq("type", "deposit")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,note,detail,payment_method"
-        )
-        .eq("type", "withdraw")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
-      supabase
+async function load() {
+    const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select(
+          "id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url"
+        )
+        .eq("type", "deposit")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("wallet_transactions")
+        .select(
+          "id,user_id,amount,status,created_at,note,detail,payment_method"
+        )
+        .eq("type", "withdraw")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
 // Fetches users from our new, secure backend API
-      (async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) throw new Error('Not logged in');
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('Not logged in');
 
-          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` },
-          });
+          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
 
-          if (!response.ok) throw new Error('Failed to fetch user list');
-          const data = await response.json();
-          return { data: data.users || [], error: null };
-        } catch (error) {
-          return { data: [], error };
-        }
-      })(),
-      supabase
-        .from("kyc_requests")
-        .select("*")
-        .order("created_at", { ascending: false }),
-    ]);
+          if (!response.ok) throw new Error('Failed to fetch user list');
+          const data = await response.json();
+          return { data: data.users || [], error: null };
+        } catch (error) {
+          return { data: [], error };
+        }
+      })(),
+      supabase
+        .from("kyc_requests")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ]);
 
     const errs = [
       depRes.error && ["deposits", depRes.error.message],
