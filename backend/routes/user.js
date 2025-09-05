@@ -2,6 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { requireAdmin } = require('../middleware/auth');
 
 /**
  * [ADMIN] Gets a list of all users for the admin dashboard.

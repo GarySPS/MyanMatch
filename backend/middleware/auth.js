@@ -54,4 +54,27 @@ async function verifySupabaseToken(req, res, next) {
   }
 }
 
-module.exports = { verifySupabaseToken };
+
+async function requireAdmin(req, res, next) {
+    if (!req.auth?.user?.id) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        const { data, error } = await req.supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('user_id', req.auth.user.id)
+            .single();
+
+        if (error) throw error;
+        if (!data?.is_admin) {
+            return res.status(403).json({ error: 'Forbidden: requires admin privileges' });
+        }
+        // User is an admin, proceed
+        next();
+    } catch (e) {
+        console.error('Admin check failed:', e);
+        return res.status(500).json({ error: 'Error checking admin status' });
+    }
+}
+module.exports = { verifySupabaseToken, requireAdmin };
