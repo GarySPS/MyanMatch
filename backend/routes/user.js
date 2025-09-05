@@ -45,7 +45,6 @@ router.get('/by-short-id/:short_id', async (req, res) => {
     res.json({ user_id: data.id });
 });
 
-
 // This endpoint schedules the welcome likes for a new user.
 router.post('/schedule-welcome-likes', async (req, res) => {
   const newUserId = req.auth?.user?.id;

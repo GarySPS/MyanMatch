@@ -16,10 +16,6 @@ if (JWKS_URL) {
   JWKS = createRemoteJWKSet(new URL(JWKS_URL), { fetch });
 }
 
-/**
- * Verify Bearer token from Authorization header.
- * On success -> req.auth = { user: { id, email, ... }, payload }
- */
 async function verifySupabaseToken(req, res, next) {
   try {
     const auth = req.headers.authorization || '';
@@ -48,8 +44,6 @@ async function verifySupabaseToken(req, res, next) {
     };
     return next();
   } catch (e) {
-    // If token is invalid or expired, we just set auth to null and continue.
-    // This allows some routes to be public while others are protected.
     req.auth = null;
     return next();
   }
@@ -70,7 +64,6 @@ async function requireAdmin(req, res, next) {
         if (!data?.is_admin) {
             return res.status(403).json({ error: 'Forbidden: requires admin privileges' });
         }
-        // User is an admin, proceed
         next();
     } catch (e) {
         console.error('Admin check failed:', e);

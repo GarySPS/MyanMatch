@@ -5,7 +5,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
-// 👇 1. FIX: Import 'requireAdmin' from your middleware
 const { verifySupabaseToken, requireAdmin } = require("./middleware/auth");
 
 // --- Route Imports ---
@@ -13,7 +12,7 @@ const auth = require("./auth");
 const likes = require("./routes/likes");
 const user = require("./routes/user");
 const reportRoutes = require("./routes/report");
-const adminRoutes = require("./routes/admin"); // ✅ 2. ADD: Import the new admin router
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -51,8 +50,6 @@ const requireAuth = (req, res, next) => {
 app.use("/api/likes", requireAuth, likes);
 app.use("/api/user", requireAuth, user);
 app.use("/api/report", requireAuth, reportRoutes);
-
-// ✅ 3. ADD: Register the new admin routes with both authentication checks
 app.use("/api/admin", requireAuth, requireAdmin, adminRoutes);
 
 
