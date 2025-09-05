@@ -7,13 +7,12 @@ const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
 const { verifySupabaseToken } = require("./middleware/auth");
 
-// --- FIXED REQUIRE PATHS ---
+// --- CORRECTED REQUIRE PATHS TO MATCH YOUR STRUCTURE ---
 const voice = require("./routes/voice");
-const auth = require("./routes/auth"); // Corrected path
-const likes = require("./routes/likes"); // Corrected path
-const user = require("./routes/user"); // Corrected path
-const reportRoutes = require("./routes/report"); // Corrected path
-const adminRoutes = require("./routes/admin"); // Added admin routes
+const auth = require("./auth"); // Fixed: This file is in the root backend folder
+const likes = require("./routes/likes");
+const user = require("./routes/user");
+const reportRoutes = require("./routes/report");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -47,31 +46,10 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-// Middleware to protect routes that require an admin user
-const requireAdmin = async (req, res, next) => {
-    if (!req.auth?.user?.id) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-    const { data, error } = await req.supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('user_id', req.auth.user.id)
-        .single();
-
-    if (error || !data?.is_admin) {
-        return res.status(403).json({ error: "Forbidden: Admins only" });
-    }
-    next();
-};
-
-
-// Public or user-specific routes
+// Apply the authentication middleware to protected routes
 app.use("/api/likes", requireAuth, likes);
 app.use("/api/user", requireAuth, user);
 app.use("/api/report", requireAuth, reportRoutes);
-
-// Admin-only routes
-app.use("/api/admin", requireAuth, requireAdmin, adminRoutes);
 
 
 app.get("/", (_req, res) => res.send("MyanMatch API OK"));
