@@ -45,7 +45,6 @@ export default function AdminDashboard() {
     return m;
   }, [profiles]);
 
-// ADD THIS NEW FUNCTION
   async function handleImpersonate(user) {
     if (!user || !user.id) {
       alert("Cannot log in as this user: missing user ID.");
@@ -88,47 +87,62 @@ export default function AdminDashboard() {
     }
   }
 
-async function load() {
-    const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url"
-        )
-        .eq("type", "deposit")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,note,detail,payment_method"
-        )
-        .eq("type", "withdraw")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
-// Fetches users from our new, secure backend API
-      (async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) throw new Error('Not logged in');
+  async function load() {
+    let authHeaders = {};
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeaders = { 'Authorization': `Bearer ${session.access_token}` };
+      } else {
+        throw new Error('You are not logged in.');
+      }
+    } catch (e) {
+      console.error("Auth session error:", e);
+      alert("Could not get user session. Please log in again.");
+      return; // Stop loading data if no session
+    }
 
-          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` },
-          });
+    const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select(
+          "id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url"
+        )
+        .eq("type", "deposit")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("wallet_transactions")
+        .select(
+          "id,user_id,amount,status,created_at,note,detail,payment_method"
+        )
+        .eq("type", "withdraw")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
+      // Fetches users from our new, secure backend API
+      (async () => {
+        try {
+          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
+            headers: authHeaders,
+          });
 
-          if (!response.ok) throw new Error('Failed to fetch user list');
-          const data = await response.json();
-          return { data: data.users || [], error: null };
-        } catch (error) {
-          return { data: [], error };
-        }
-      })(),
-      supabase
-        .from("kyc_requests")
-        .select("*")
-        .order("created_at", { ascending: false }),
-    ]);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Failed to fetch user list:", response.status, errorText);
+            throw new Error(`Failed to fetch user list`);
+          }
+          const data = await response.json();
+          return { data: data.users || [], error: null };
+        } catch (error) {
+          return { data: [], error };
+        }
+      })(),
+      supabase
+        .from("kyc_requests")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ]);
 
 
     const errs = [
@@ -153,7 +167,7 @@ async function load() {
 
     // ---- Reports via backend (uses your session/cookies)
     try {
-      const r = await fetch(`${API_BASE}/api/admin/reports`);
+      const r = await fetch(`${API_BASE}/api/admin/reports`, { headers: authHeaders });
 
       let j = { reports: [] };
       const ct = r.headers.get("content-type") || "";
@@ -174,7 +188,6 @@ async function load() {
         byUser.set(x.reported_user_id, arr);
       }
 
-      // <<< FIX: This section now correctly merges user and profile data to get the `blocked` status
       const localUsers = userRes.data || [];
       const localProfiles = profRes.data || [];
 
@@ -191,7 +204,7 @@ async function load() {
           count: arr.length,
           reasons: arr.map((a) => a.reason).filter(Boolean),
           latestAt: arr.map((a) => a.created_at).sort().slice(-1)[0] || null,
-          is_blocked: !!p.blocked, // <<< FIX: Added the user's blocked status
+          is_blocked: !!p.blocked,
         });
       }
 
@@ -302,49 +315,51 @@ async function load() {
     }
   }
 
-// ✅ PASTE THIS NEW BLOCK IN ITS PLACE ✅
-/* ----------------- KYC ----------------- */
-async function approveKyc(req) {
-  const { error } = await supabase.rpc("handle_kyc_decision", {
-    p_request_id: req.id,
-    p_admin_id: me.id,
-    p_new_status: "approved",
-    p_reason: req.notes || null,
-  });
+  /* ----------------- KYC ----------------- */
+  async function approveKyc(req) {
+    const { error } = await supabase.rpc("handle_kyc_decision", {
+      p_request_id: req.id,
+      p_admin_id: me.id,
+      p_new_status: "approved",
+      p_reason: req.notes || null,
+    });
 
-  if (error) {
-    alert("Failed to approve KYC: " + error.message);
-  } else {
-    await load();
+    if (error) {
+      alert("Failed to approve KYC: " + error.message);
+    } else {
+      await load();
+    }
   }
-}
 
-async function denyKyc(req) {
-  const reason = prompt("Reason to deny? (visible to user)", req.notes || "");
-  if (reason === null) return; // User cancelled the prompt
+  async function denyKyc(req) {
+    const reason = prompt("Reason to deny? (visible to user)", req.notes || "");
+    if (reason === null) return; // User cancelled the prompt
 
-  const { error } = await supabase.rpc("handle_kyc_decision", {
-    p_request_id: req.id,
-    p_admin_id: me.id,
-    p_new_status: "denied",
-    p_reason: reason,
-  });
+    const { error } = await supabase.rpc("handle_kyc_decision", {
+      p_request_id: req.id,
+      p_admin_id: me.id,
+      p_new_status: "denied",
+      p_reason: reason,
+    });
 
-  if (error) {
-    alert("Failed to deny KYC: " + error.message);
-  } else {
-    await load();
+    if (error) {
+      alert("Failed to deny KYC: " + error.message);
+    } else {
+      await load();
+    }
   }
-}
 
   /* ----------------- REPORT ACTIONS ----------------- */
-
   async function blockUser(userId) {
     try {
       console.log("[Admin] blockUser ->", userId);
+      const { data: { session } } = await supabase.auth.getSession();
       const r = await fetch(`/api/admin/block_user`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ user_id: userId }),
       });
       if (!r.ok) {
@@ -361,9 +376,13 @@ async function denyKyc(req) {
   async function releaseUser(userId) {
     try {
       console.log("[Admin] releaseUser ->", userId);
+      const { data: { session } } = await supabase.auth.getSession();
       const r = await fetch(`/api/admin/release_user`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ user_id: userId }),
       });
       if (!r.ok) {
@@ -406,42 +425,42 @@ async function denyKyc(req) {
       {/* USERS */}
       {tab === "users" && (
         <Table>
-<thead>
-            <Row header>
-              <Cell>Short ID</Cell>
-              <Cell>Email</Cell>
-              <Cell>Coin</Cell>
-              <Cell>Hold</Cell>
-              <Cell>Admin</Cell>
-              <Cell>Verified</Cell>
-              <Cell>Joined</Cell>
+          <thead>
+            <Row header>
+              <Cell>Short ID</Cell>
+              <Cell>Email</Cell>
+              <Cell>Coin</Cell>
+              <Cell>Hold</Cell>
+              <Cell>Admin</Cell>
+              <Cell>Verified</Cell>
+              <Cell>Joined</Cell>
               <Cell>Actions</Cell>
-            </Row>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const p = profileIndex.get(u.id); // Find matching profile data
-              return (
-                <Row key={u.id}>
-                  <Cell>{u.short_id || "—"}</Cell>
-                  <Cell>{u.email || ""}</Cell>
-                  <Cell center>{p?.coin ?? "N/A"}</Cell>
-                  <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
-                  <Cell center>{u.is_admin ? "✓" : ""}</Cell>
-                  <Cell center>{p?.is_verified ? "✓" : ""}</Cell>
-                  <Cell>{u.created_at?.slice(0, 10) || ""}</Cell>
+            </Row>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const p = profileIndex.get(u.id); // Find matching profile data
+              return (
+                <Row key={u.id}>
+                  <Cell>{u.short_id || "—"}</Cell>
+                  <Cell>{u.email || ""}</Cell>
+                  <Cell center>{p?.coin ?? "N/A"}</Cell>
+                  <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
+                  <Cell center>{u.is_admin ? "✓" : ""}</Cell>
+                  <Cell center>{p?.is_verified ? "✓" : ""}</Cell>
+                  <Cell>{u.created_at?.slice(0, 10) || ""}</Cell>
                   <Cell>
-                    <button 
-                      onClick={() => handleImpersonate(u)} 
+                    <button
+                      onClick={() => handleImpersonate(u)}
                       className="px-2 py-1 bg-blue-600 rounded text-white hover:bg-blue-700"
                     >
                       Log In As User
                     </button>
                   </Cell>
-                </Row>
-              );
-            })}
-          </tbody>
+                </Row>
+              );
+            })}
+          </tbody>
         </Table>
       )}
 
@@ -693,7 +712,6 @@ async function denyKyc(req) {
         </div>
       )}
 
-      {/* <<< FIX: The next two sections (reports1 and reports2) are updated */}
       {/* REPORTS — LEVEL 1 */}
       {tab === "reports1" && (
         <div>
@@ -795,7 +813,7 @@ async function denyKyc(req) {
                     </ul>
                   </Cell>
                   <Cell center>
-                     {r.is_blocked ? (
+                    {r.is_blocked ? (
                       <span className="font-bold text-red-400">Blocked</span>
                     ) : (
                       <span className="text-green-400">Active</span>
