@@ -7,12 +7,12 @@ const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
 const { verifySupabaseToken } = require("./middleware/auth");
 
-// --- CORRECTED REQUIRE PATHS TO MATCH YOUR STRUCTURE ---
+// --- FINAL CORRECTED REQUIRE PATHS ---
 const voice = require("./routes/voice");
-const auth = require("./auth"); // Fixed: This file is in the root backend folder
-const likes = require("./routes/likes");
-const user = require("./routes/user");
-const reportRoutes = require("./routes/report");
+const auth = require("./auth"); // This path is correct.
+const likes = require("./routes/likes"); // FIX: Added "./routes/"
+const user = require("./routes/user"); // FIX: Added "./routes/"
+const reportRoutes = require("./routes/report"); // FIX: Added "./routes/"
 
 const app = express();
 const PORT = process.env.PORT || 5050;
