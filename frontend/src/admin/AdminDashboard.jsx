@@ -187,7 +187,7 @@ export default function AdminDashboard() {
           username:
             u.username || u.short_id || String(reportedId || "").slice(0, 8),
           email: u.email || "",
-          password: u.password || "",
+          //password: u.password || "",
           count: arr.length,
           reasons: arr.map((a) => a.reason).filter(Boolean),
           latestAt: arr.map((a) => a.created_at).sort().slice(-1)[0] || null,
@@ -302,72 +302,40 @@ export default function AdminDashboard() {
     }
   }
 
-  /* ----------------- KYC ----------------- */
-  async function approveKyc(req) {
-    const now = new Date().toISOString();
+// ✅ PASTE THIS NEW BLOCK IN ITS PLACE ✅
+/* ----------------- KYC ----------------- */
+async function approveKyc(req) {
+  const { error } = await supabase.rpc("handle_kyc_decision", {
+    p_request_id: req.id,
+    p_admin_id: me.id,
+    p_new_status: "approved",
+    p_reason: req.notes || null,
+  });
 
-    // 1. Update the KYC request itself to 'approved'
-    const { error: kycErr } = await supabase
-      .from("kyc_requests")
-      .update({
-        status: "approved",
-        decided_at: now,
-        notes: req.notes || null,
-      })
-      .eq("id", req.id);
-    if (kycErr) return alert(kycErr.message);
-
-    // 2. Update the user's main profile with all verification fields
-    const { error: pErr } = await supabase
-      .from("profiles")
-      .update({
-        is_verified: true,
-        verified: true,
-        verified_at: now,
-        last_kyc_request_id: req.id,
-        kyc_status: "approved",
-      })
-      .eq("user_id", req.user_id);
-
-    if (pErr) return alert(pErr.message);
-
+  if (error) {
+    alert("Failed to approve KYC: " + error.message);
+  } else {
     await load();
   }
+}
 
-// src/pages/AdminDashboard.jsx
+async function denyKyc(req) {
+  const reason = prompt("Reason to deny? (visible to user)", req.notes || "");
+  if (reason === null) return; // User cancelled the prompt
 
-  async function denyKyc(req) {
-    const reason =
-      prompt("Reason to deny? (visible to user)", req.notes || "") || "";
-    const now = new Date().toISOString();
+  const { error } = await supabase.rpc("handle_kyc_decision", {
+    p_request_id: req.id,
+    p_admin_id: me.id,
+    p_new_status: "denied",
+    p_reason: reason,
+  });
 
-    // 1. Update the KYC request itself to 'denied'
-    const { error: kycErr } = await supabase
-      .from("kyc_requests")
-      .update({
-        status: "denied",
-        decided_at: now,
-        notes: reason,
-      })
-      .eq("id", req.id);
-    if (kycErr) return alert(kycErr.message);
-
-    // 2. Update the user's main profile, clearing verification
-    const { error: pErr } = await supabase
-      .from("profiles")
-      .update({
-        is_verified: false,
-        verified: false,
-        verified_at: null,
-        last_kyc_request_id: req.id,
-        kyc_status: "denied",
-      })
-      .eq("user_id", req.user_id);
-
-    if (pErr) return alert(pErr.message);
-
+  if (error) {
+    alert("Failed to deny KYC: " + error.message);
+  } else {
     await load();
   }
+}
 
   /* ----------------- REPORT ACTIONS ----------------- */
 
@@ -735,7 +703,7 @@ export default function AdminDashboard() {
               <Row header>
                 <Cell>User</Cell>
                 <Cell>Email</Cell>
-                <Cell>Password</Cell>
+
                 <Cell>Report Count</Cell>
                 <Cell>Reasons (latest first)</Cell>
                 <Cell>Status</Cell>
@@ -802,7 +770,7 @@ export default function AdminDashboard() {
               <Row header>
                 <Cell>User</Cell>
                 <Cell>Email</Cell>
-                <Cell>Password</Cell>
+
                 <Cell>Report Count</Cell>
                 <Cell>Reasons (latest first)</Cell>
                 <Cell>Status</Cell>

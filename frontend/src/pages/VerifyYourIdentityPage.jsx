@@ -238,108 +238,117 @@ useEffect(() => {
   const kycPending = userRow?.kyc_status === "pending" || lastKyc?.status === "pending";
   const canSubmit = !!selfie1 && !!selfie2 && !loading && !kycPending && hash1 !== hash2;
 
-  async function handleSubmit() {
-    try {
-      setStatusMsg("");
-      setErrorMsg("");
-      if (!myId) return setErrorMsg(t("verify.err.signInFirst"));
-      if (!selfie1 || !selfie2) return setErrorMsg(t("verify.err.needBoth"));
-      if (hash1 && hash2 && hash1 === hash2) {
-        return setErrorMsg(t("verify.err.identical"));
-      }
+  async function handleSubmit() {
+    try {
+      setStatusMsg("");
+      setErrorMsg("");
+      if (!myId) return setErrorMsg(t("verify.err.signInFirst"));
+      if (!selfie1 || !selfie2) return setErrorMsg(t("verify.err.needBoth"));
+      if (hash1 && hash2 && hash1 === hash2) {
+        return setErrorMsg(t("verify.err.identical"));
+      }
 
-      setLoading(true);
+      setLoading(true);
 
-      const kycId = uuidv4();
-      const base = `kyc/${myId}/${kycId}`;
-      const pathSelfie1 = `${base}/selfie1.jpg`;
-      const pathSelfie2 = `${base}/selfie2.jpg`;
+      // --- REFACTORED LOGIC STARTS HERE ---
 
-      const c1 = await compressImage(selfie1);
-      const c2 = await compressImage(selfie2);
+// 1. Define all paths and a unique ID for the request first.
+      const kycId = uuidv4();
+      const base = `${myId}/${kycId}`;
+      const pathSelfie1 = `${base}/selfie1.jpg`;
+      const pathSelfie2 = `${base}/selfie2.jpg`;
+      const pathAvatar = `${base}/avatar.jpg`;
 
-      const up1 = await supabase.storage.from("kyc").upload(pathSelfie1, c1, { upsert: true, contentType: "image/jpeg" });
-      if (up1.error) throw up1.error;
+      // 2. Prepare the avatar snapshot and its hash. This is needed for the database insert.
+      let avatarBlob = null;
+      // (Helper functions moved inside for clarity, but they can remain outside)
+      function extractMediaPathFromUrl(u) {
+        if (!u || typeof u !== "string") return null;
+        const m = u.match(/\/object\/(?:public|sign)\/media\/([^?]+)/);
+        return m ? decodeURIComponent(m[1]) : null;
+      }
+      async function tryDownloadFromMedia(pathOrUrl) {
+        if (!pathOrUrl) return null;
+        const asPath = extractMediaPathFromUrl(pathOrUrl) || String(pathOrUrl);
+        const clean = asPath.replace(/^media\//, "");
+        const { data, error } = await supabase.storage.from("media").download(clean);
+        return error ? null : data;
+      }
 
-      const up2 = await supabase.storage.from("kyc").upload(pathSelfie2, c2, { upsert: true, contentType: "image/jpeg" });
-      if (up2.error) throw up2.error;
-
-      // ----- Avatar snapshot (required by DB) -----
-      let pathAvatar = `${base}/avatar.jpg`;
-      let avatarHash = null;
-
-      function extractMediaPathFromUrl(u) {
-        if (!u || typeof u !== "string") return null;
-        const m = u.match(/\/object\/(?:public|sign)\/media\/([^?]+)/);
-        return m ? decodeURIComponent(m[1]) : null;
-        }
-
-      async function tryDownloadFromMedia(pathOrUrl) {
-        if (!pathOrUrl) return null;
-        const asPath = extractMediaPathFromUrl(pathOrUrl) || String(pathOrUrl);
-        const clean = asPath.replace(/^media\//, "");
-        const { data, error } = await supabase.storage.from("media").download(clean);
-        return error ? null : data;
-      }
-
-      let avatarBlob = null;
-      if (profileRow?.avatar_path) {
-        avatarBlob = await tryDownloadFromMedia(profileRow.avatar_path);
-      }
-      if (!avatarBlob && profileRow?.avatar_url) {
-        avatarBlob = await tryDownloadFromMedia(profileRow.avatar_url);
-        if (!avatarBlob && !extractMediaPathFromUrl(profileRow.avatar_url)) {
-          try {
-            avatarBlob = await fetchAsBlob(profileRow.avatar_url);
-          } catch {}
-        }
-      }
+      if (profileRow?.avatar_path) {
+        avatarBlob = await tryDownloadFromMedia(profileRow.avatar_path);
+      }
+      if (!avatarBlob && profileRow?.avatar_url) {
+        avatarBlob = await tryDownloadFromMedia(profileRow.avatar_url);
+        if (!avatarBlob && !extractMediaPathFromUrl(profileRow.avatar_url)) {
+          try { avatarBlob = await fetchAsBlob(profileRow.avatar_url); } catch {}
+        }
+      }
+      if (!avatarBlob) {
+        const first = _parseFirstMedia(profileRow?.media);
+        if (first) avatarBlob = await tryDownloadFromMedia(first);
+      }
+      
+      const compressedSelfie1 = await compressImage(selfie1);
+      
+      // If no profile avatar exists, use the first selfie as the snapshot.
       if (!avatarBlob) {
-        const first = _parseFirstMedia(profileRow?.media);
-        if (first) avatarBlob = await tryDownloadFromMedia(first);
+        avatarBlob = compressedSelfie1;
       }
+      
+      const avatarHash = await sha256OfBlob(avatarBlob);
+      
+      // 3. **CRITICAL FIX**: Insert the database record BEFORE uploading to storage.
+      const { error: insErr } = await supabase.from("kyc_requests").insert({
+        id: kycId, // We provide the ID so we can reference it for cleanup
+        user_id: myId,
+        status: "pending",
+        selfie1_url: pathSelfie1,
+        selfie2_url: pathSelfie2,
+        avatar_snapshot_url: pathAvatar,
+        avatar_sha256: avatarHash,
+      });
+      if (insErr) throw insErr;
 
-      if (avatarBlob) {
-        avatarHash = await sha256OfBlob(avatarBlob);
-        const upA = await supabase.storage.from("kyc").upload(pathAvatar, avatarBlob, {
-          upsert: true,
-          contentType: "image/jpeg",
-        });
+
+      // 4. Now that the record exists, upload the files.
+      // We wrap this in a try/catch to delete the DB record if uploads fail.
+      try {
+        const compressedSelfie2 = await compressImage(selfie2);
+
+        const up1 = await supabase.storage.from("kyc").upload(pathSelfie1, compressedSelfie1, { upsert: false, contentType: "image/jpeg" });
+        if (up1.error) throw up1.error;
+
+        const up2 = await supabase.storage.from("kyc").upload(pathSelfie2, compressedSelfie2, { upsert: false, contentType: "image/jpeg" });
+        if (up2.error) throw up2.error;
+
+        const upA = await supabase.storage.from("kyc").upload(pathAvatar, avatarBlob, { upsert: false, contentType: "image/jpeg" });
         if (upA.error) throw upA.error;
-      } else {
-        avatarHash = await sha256OfBlob(c1);
-        const upA2 = await supabase.storage.from("kyc").upload(pathAvatar, c1, {
-          upsert: true,
-          contentType: "image/jpeg",
-        });
-        if (upA2.error) throw upA2.error;
+      } catch (uploadError) {
+        // Cleanup: If any upload fails, delete the record we just created.
+        await supabase.from("kyc_requests").delete().eq("id", kycId);
+        // Then, re-throw the error to be caught by the outer catch block.
+        throw uploadError;
       }
+      
+      // 5. Finally, update the user's profile status.
+      await supabase.from("profiles").update({ kyc_status: "pending" }).eq("user_id", myId);
 
-      const { error: insErr } = await supabase.from("kyc_requests").insert({
-        user_id: myId,
-        status: "pending",
-        selfie1_url: pathSelfie1,
-        selfie2_url: pathSelfie2,
-        avatar_snapshot_url: pathAvatar,
-        avatar_sha256: avatarHash,
-      });
-      if (insErr) throw insErr;
+      // --- REFACTORED LOGIC ENDS HERE ---
 
-      await supabase.from("profiles").update({ kyc_status: "pending" }).eq("user_id", myId);
-
-      setStatusMsg(t("verify.msg.submitted"));
-      setUserRow((u) => (u ? { ...u, kyc_status: "pending" } : u));
-      setSelfie1(null);
-      setSelfie2(null);
-      setHash1("");
-      setHash2("");
-    } catch (e) {
-      console.error(e);
-      setErrorMsg(e?.message || t("verify.err.generic"));
-    } finally {
-      setLoading(false);
-    }
-  }
+      setStatusMsg(t("verify.msg.submitted"));
+      setUserRow((u) => (u ? { ...u, kyc_status: "pending" } : u));
+      setSelfie1(null);
+      setSelfie2(null);
+      setHash1("");
+      setHash2("");
+    } catch (e) {
+      console.error("KYC Submit Error:", e);
+      setErrorMsg(e?.message || t("verify.err.generic"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div
