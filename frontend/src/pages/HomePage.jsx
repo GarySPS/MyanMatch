@@ -690,6 +690,7 @@ function InfoTag({ icon, text }) {
 }
 
 /* -------------------------- Page -------------------------- */
+
 export default function HomePage() {
   const { t } = useI18n();
 
@@ -701,7 +702,7 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
-    // Optional: reload if localStorage user changes in another tab/window
+  // Optional: reload if localStorage user changes in another tab/window
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === "myanmatch_user") {
@@ -906,7 +907,6 @@ export default function HomePage() {
   const verified = !!user.is_verified;
   const ageDisplay = getAge(user);
 
-  // convert any signed URL -> public URL (bucket is public)
   const signedToPublic = (u) => {
     const s = String(u || "");
     const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
@@ -917,7 +917,6 @@ export default function HomePage() {
     return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
   };
 
-  // turn objects/paths/urls into displayable URLs (same logic as UserProfilePage)
   const toUrl = (item) => {
     if (!item) return null;
     if (typeof item === "object") {
@@ -937,7 +936,6 @@ export default function HomePage() {
     return data?.publicUrl || null;
   };
 
-  // gather the same set of possible fields as UserProfilePage
   const arr = (v) => {
     if (!v) return [];
     if (Array.isArray(v)) return v;
