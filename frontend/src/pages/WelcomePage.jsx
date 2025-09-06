@@ -1,13 +1,11 @@
+// src/pages/WelcomePage.jsx
+
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "../supabaseClient"; 
 
 export default function WelcomePage() {
   const navigate = useNavigate();
-
-  // [!BUG FIXED!] The automatic signOut logic has been removed.
-  // This was destroying the session for new users during the onboarding process.
-  // This page should be purely presentational.
 
   return (
     <div
@@ -17,8 +15,9 @@ export default function WelcomePage() {
       }}
     >
       <div className="absolute inset-0 bg-black bg-opacity-30 z-0" />
-      <img src="/images/heart-curve-topleft.png" alt="" className="absolute top-0 left-0 w-32 opacity-90 pointer-events-none select-none z-1" draggable={false} />
-      <img src="/images/heart-curve-bottomright.png" alt="" className="absolute bottom-0 right-0 w-40 opacity-90 pointer-events-none select-none z-1" draggable={false} />
+      {/* [!FIX!] Corrected Tailwind z-index class from z-1 to z-10 */}
+      <img src="/images/heart-curve-topleft.png" alt="" className="absolute top-0 left-0 w-32 opacity-90 pointer-events-none select-none z-10" draggable={false} />
+      <img src="/images/heart-curve-bottomright.png" alt="" className="absolute bottom-0 right-0 w-40 opacity-90 pointer-events-none select-none z-10" draggable={false} />
       <img
         src="/images/myanmatch-logo.png"
         alt="MyanMatch"

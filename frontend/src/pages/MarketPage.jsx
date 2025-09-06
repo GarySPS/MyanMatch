@@ -24,9 +24,9 @@ const TABS = [
 ];
 
 const PAYMENT_METHODS = [
-  { key: "KBZpay", label: "KBZ Pay",  qr: "/payments/kpay-qr.jpg",  accountName: "Soe Pyae Sone", accountNo: "09957117174", note: "MyanMatch Dating" },
-  { key: "AYApay", label: "AYA Pay", qr: "/payments/ayapay-qr.jpg", accountName: "Soe Pyae Sone", accountNo: "09957117174", note: "MyanMatch Dating" },
-  { key: "Wavepay", label: "Wave Pay", qr: "/payments/wavepay-qr.jpg", accountName: "Soe Pyae Sone", accountNo: "09957117174", note: "MyanMatch Dating" },
+  { key: "KBZpay", label: "KBZ Pay",  qr: "/payments/kpay-qr.jpg",  accountName: "Lay Ngel", accountNo: "09442429769", note: "MyanMatch Dating" },
+  { key: "AYApay", label: "AYA Pay", qr: "/payments/ayapay-qr.jpg", accountName: "Lay Ngel", accountNo: "09442429769", note: "MyanMatch Dating" },
+  { key: "Wavepay", label: "Wave Pay", qr: "/payments/wavepay-qr.jpg", accountName: "Lay Ngel", accountNo: "09442429769", note: "MyanMatch Dating" },
   { key: "USDT", label: "USDT (TRC20)", qr: "/payments/usdt-qr.jpg", accountName: "USDT", accountNo: "TQsmC1Zow2wLAK5nrJXMqAnWAdhy1G8RiJ", note: "Network: TRC20 only." },
   { key: "WISE", label: "Wise Bank", qr: "/payments/wise-qr.png", accountName: "XXX", accountNo: "IBAN/Acct No here", note: "Put your email in payment note." },
 ];
