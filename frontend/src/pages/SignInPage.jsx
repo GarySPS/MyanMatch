@@ -4,18 +4,16 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-// [!MODIFIED!] - Updated to also fetch and cache the username
+// This function is already correct and doesn't need changes.
 async function ensureProfileAndCache() {
   const { data: { user } } = await supabase.auth.getUser();
   const authId = user?.id;
   if (!authId) return null;
 
-  // This part is fine, it ensures a profile exists
   await supabase.from("profiles").upsert({ user_id: authId }, { onConflict: "user_id" });
 
   const { data: prof } = await supabase
     .from("profiles")
-    // Added 'username' to the selection
     .select("user_id, username, first_name, last_name, avatar_url, onboarding_complete, is_admin")
     .eq("user_id", authId)
     .single();
@@ -23,7 +21,7 @@ async function ensureProfileAndCache() {
   const cache = {
     id: authId,
     user_id: authId,
-    username: prof?.username || null, // Added username to the cache
+    username: prof?.username || null,
     first_name: prof?.first_name || null,
     last_name: prof?.last_name || null,
     avatar_url: prof?.avatar_url || null,
@@ -62,14 +60,13 @@ function MMToast({ open, type = "error", text = "", onClose }) {
 export default function SignInPage() {
   const navigate = useNavigate();
 
-  // [!MODIFIED!] - Changed from `email` to `username`
-  const [username, setUsername] = useState("");
+  // [!MODIFIED!] - Use a generic name for the input state
+  const [loginInput, setLoginInput] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // toast
   const [toastOpen, setToastOpen] = useState(false);
   const [toastType, setToastType] = useState("error");
   const [toastText, setToastText] = useState("");
@@ -81,36 +78,28 @@ export default function SignInPage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
-  // This useEffect correctly routes the user after a session is established. No changes needed here.
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
       if (session?.user) {
-        try {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("onboarding_complete, is_admin")
-            .eq("user_id", session.user.id)
-            .single();
-
-          if (prof?.is_admin) return navigate("/admin", { replace: true });
-          if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
-          return navigate("/onboarding/terms", { replace: true });
-        } catch {
-          return navigate("/onboarding/terms", { replace: true });
-        }
+        const prof = await ensureProfileAndCache();
+        if (prof?.is_admin) return navigate("/admin", { replace: true });
+        if (prof?.onboarding_complete) return navigate("/HomePage", { replace: true });
+        return navigate("/onboarding/terms", { replace: true });
       }
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // [!REPLACED!] - The entire sign-in function is updated for the username flow.
-  async function handleUsernameSignIn(e) {
+  // [!REPLACED!] - The entire sign-in function is updated with the smart logic.
+  async function handleSignIn(e) {
     e.preventDefault();
     setErr("");
+    
+    const trimmedInput = loginInput.trim();
 
     // 1. Validate inputs
-    if (!username || username.trim() === "") {
-      const m = "Please enter your username.";
+    if (!trimmedInput) {
+      const m = "Please enter your username or email.";
       setErr(m); showToast(m, "error"); return;
     }
     if (!password) {
@@ -120,31 +109,33 @@ export default function SignInPage() {
 
     setLoading(true);
 
-    // 2. Convert the entered username into the dummy email format
-    const dummyEmail = `${username.toLowerCase().trim()}@myanmatch.user`;
+    let loginEmail;
 
-    // 3. Sign in using the dummy email and password
+    // 2. THIS IS THE SMART LOGIC
+    // If the input contains '@', treat it as an email.
+    // Otherwise, treat it as a username and create the dummy email.
+    if (trimmedInput.includes('@')) {
+      loginEmail = trimmedInput.toLowerCase(); // It's a real email
+    } else {
+      loginEmail = `${trimmedInput.toLowerCase()}@myanmatch.user`; // It's a username
+    }
+
+    // 3. Sign in using the determined email (real or dummy)
     const { error } = await supabase.auth.signInWithPassword({
-      email: dummyEmail,
+      email: loginEmail,
       password: password,
     });
 
     if (error) {
-      // Use a generic error to prevent telling attackers if a username is valid or not
-      const m = "Invalid username or password.";
+      const m = "Invalid credentials. Please try again.";
       setErr(m);
       showToast(m, "error");
       setLoading(false);
       return;
     }
-
-    // 4. On success, create the local user cache and navigate
-    const prof = await ensureProfileAndCache();
-
-    if (prof?.is_admin) navigate("/admin", { replace: true });
-    else if (prof?.onboarding_complete) navigate("/HomePage", { replace: true });
-    else navigate("/onboarding/terms", { replace: true });
-
+    
+    // On success, the useEffect above will handle caching and navigation.
+    // We don't need to call navigate() here anymore.
     setLoading(false);
   }
 
@@ -152,7 +143,7 @@ export default function SignInPage() {
     <div
       className="min-h-screen w-full flex flex-col justify-center items-center relative"
       style={{
-        background: `url('/images/myanmatch-bg.jpg') center center/cover no-repeat`,
+        background: `url('/images/myanmatch-bg.jpg') center/cover no-repeat`,
         backgroundColor: "#21101e",
       }}
     >
@@ -161,16 +152,15 @@ export default function SignInPage() {
         <h2 className="text-2xl font-extrabold text-[#893086] text-center">Sign in to MyanMatch</h2>
         <p className="text-base font-medium text-gray-700 mb-6 text-center">အကောင့်ဝင်မည်</p>
 
-        {/* [!MODIFIED!] - Form now calls `handleUsernameSignIn` */}
-        <form onSubmit={handleUsernameSignIn} className="w-full">
-          {/* [!MODIFIED!] - This is now the Username input */}
-          <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+        <form onSubmit={handleSignIn} className="w-full">
+          {/* [!MODIFIED!] - Updated label and input for both username and email */}
+          <label className="block text-sm font-medium text-gray-700 mb-2">Username or Email</label>
           <input
             type="text"
             className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg bg-white"
-            placeholder="Enter your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter username or email"
+            value={loginInput}
+            onChange={(e) => setLoginInput(e.target.value)}
           />
 
           <label className="block text-sm font-medium text-gray-700 mt-4 mb-2">
