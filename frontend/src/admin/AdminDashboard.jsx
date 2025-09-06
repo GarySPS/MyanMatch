@@ -45,19 +45,15 @@ export default function AdminDashboard() {
     return m;
   }, [profiles]);
   
-  // [!ADD!] Memoized filtered list of users based on the search term
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
     const lowercasedFilter = searchTerm.toLowerCase().trim();
-    return users.filter(u => {
-      const p = profileIndex.get(u.id);
-      return (
-        u.email?.toLowerCase().includes(lowercasedFilter) ||
-        u.short_id?.toLowerCase().includes(lowercasedFilter) ||
-        p?.username?.toLowerCase().includes(lowercasedFilter)
-      );
-    });
-  }, [users, searchTerm, profileIndex]);
+    return users.filter(u => 
+      u.email?.toLowerCase().includes(lowercasedFilter) ||
+      u.short_id?.toLowerCase().includes(lowercasedFilter) ||
+      u.username?.toLowerCase().includes(lowercasedFilter)
+    );
+  }, [users, searchTerm]);
 
   async function handleImpersonate(user) {
     if (!user || !user.id) {
@@ -406,7 +402,6 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* [!REPLACED!] - Entire "users" tab content is replaced */}
       {tab === "users" && (
         <div>
           <div className="mb-4">
@@ -422,6 +417,7 @@ export default function AdminDashboard() {
             <thead>
               <Row header>
                 <Cell>Username</Cell>
+                <Cell>Short ID</Cell>
                 <Cell>Email</Cell>
                 <Cell>Coin</Cell>
                 <Cell>Hold</Cell>
@@ -436,7 +432,8 @@ export default function AdminDashboard() {
                 const p = profileIndex.get(u.id);
                 return (
                   <Row key={u.id}>
-                    <Cell>{p?.username || u.short_id || "—"}</Cell>
+                    <Cell>{u.username || "—"}</Cell>
+                    <Cell>{u.short_id || "—"}</Cell>
                     <Cell>{u.email?.endsWith('@myanmatch.user') ? '(dummy email)' : u.email}</Cell>
                     <Cell center>{p?.coin ?? "N/A"}</Cell>
                     <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
@@ -458,7 +455,6 @@ export default function AdminDashboard() {
           </Table>
         </div>
       )}
-
 
       {/* DEPOSITS */}
       {tab === "deposits" && (
