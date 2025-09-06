@@ -660,56 +660,57 @@ function showToast(text, type = "success") {
   const viewingUserId = id || userId || myId; // if no param, show self
   const isSelf = viewingUserId && myId && String(viewingUserId) === String(myId);
 
-useEffect(() => {
-  async function run() {
-    setLoading(true);
+  useEffect(() => {
+    async function run() {
+      setLoading(true);
 
-    // 1. Fetch my own plan (for daily action limits)
-    if (myId) {
-      const { data: meRow } = await supabase
-        .from("profiles")
-        .select("membership_plan")
-        .eq("user_id", myId)
-        .maybeSingle();
-      setPlan(meRow?.membership_plan || "free");
-    }
+      // 1. Fetch my own plan (for daily action limits)
+      if (myId) {
+        const { data: meRow } = await supabase
+          .from("profiles")
+          .select("membership_plan")
+          .eq("user_id", myId)
+          .maybeSingle();
+        setPlan(meRow?.membership_plan || "free");
+      }
 
-    // 2. Stop if we don't know who to look for
-    if (!viewingUserId) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+      // 2. Stop if we don't know who to look for
+      if (!viewingUserId) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-    // 3. Fetch the viewed user's main profile and supplementary data together
-    const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-      
-      // [!FIX!] Removed kyc_status from this query as it does not exist on app_users
-      supabase.from("app_users").select("user_id, short_id, verified_at").eq("user_id", viewingUserId).maybeSingle(),
-    ]);
+      // 3. Fetch the viewed user's main profile and supplementary data together
+      const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
+        supabase.from("app_users").select("user_id, short_id, verified_at").eq("user_id", viewingUserId).maybeSingle(),
+      ]);
 
-    // 4. Show "Not Found" if there's any error OR if the main profile is missing.
-    if (profErr || uerr || !prof) {
-      if (profErr) console.error("Fetch profile error:", profErr);
-      if (uerr) console.error("Fetch user error:", uerr);
-      if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
-      setUser(null);
-    } else {
-      const verified = !!(prof.is_verified) || !!(urow?.verified_at);
-      setUser({
-        ...prof,
-        _verified: verified,
-        // [!FIX!] Get kyc_status from the main profile object (prof)
-        _kyc_status: prof?.kyc_status || null,
-        _short_id: urow?.short_id || null,
-      });
-    }
-    setLoading(false);
-  }
+      // 4. Show "Not Found" if there's any error OR if the main profile is missing.
+      if (profErr || uerr || !prof) {
+        if (profErr) console.error("Fetch profile error:", profErr);
+        if (uerr) console.error("Fetch user error:", uerr);
+        if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
+        setUser(null);
+      } else {
+        // [!FIX!] The bug was here. The verified status must ONLY come from
+        // the `is_verified` column in the `profiles` table, which is set by KYC.
+        // It should NOT check the `verified_at` from `app_users`, which is for email confirmation.
+        const kycVerified = !!prof.is_verified;
 
-  run();
-}, [viewingUserId, myId]);
+        setUser({
+          ...prof,
+          _verified: kycVerified, // Use a consistent internal flag for KYC status
+          _kyc_status: prof?.kyc_status || null,
+          _short_id: urow?.short_id || null,
+        });
+      }
+      setLoading(false);
+    }
+
+    run();
+  }, [viewingUserId, myId]);
 
   if (loading) {
     return (
