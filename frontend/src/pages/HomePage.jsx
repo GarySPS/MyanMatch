@@ -798,6 +798,7 @@ export default function HomePage() {
       let q = supabase
         .from("profiles")
         .select("*")
+        // [!THIS IS THE FIX!] This line filters out all bot accounts from the matchmaking feed.
         .eq('is_bot', false)
         .not("user_id", "in", `(${excludeIds.join(",")})`);
 
