@@ -62,7 +62,7 @@ async function handleImpersonate(user) {
       if (!session) throw new Error('You are not logged in as an admin.');
 
       // ✅ FIXED: Ask the correct admin endpoint
-      const response = await fetch(`${API_BADE}/admin/impersonate`, {
+      const response = await fetch(`${API_BASE}/api/admin/impersonate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,13 +133,13 @@ supabase
   .from("profiles")
   .select("user_id, username, coin, coin_hold, is_admin, is_verified, blocked"), // <-- Added username
       // ✅ FIXED: Fetches users from the correct, secure backend API endpoint
-      fetch(`${API_BASE}/admin/users`, { headers: authHeaders }).then(res => res.json()),
+      fetch(`${API_BASE}/api/admin/users`, { headers: authHeaders }).then(res => res.json()),
       supabase
         .from("kyc_requests")
         .select("*")
         .order("created_at", { ascending: false }),
       // ✅ FIXED: Fetches reports from the secure backend API endpoint
-      fetch(`${API_BASE}/admin/reports`, { headers: authHeaders }).then(res => res.json())
+      fetch(`${API_BASE}/api/admin/reports`, { headers: authHeaders }).then(res => res.json())
     ]);
 
     // Process Users response
