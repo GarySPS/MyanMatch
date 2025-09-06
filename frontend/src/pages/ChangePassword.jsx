@@ -1,67 +1,60 @@
-// src/pages/ChangePassword.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient"; // [!ADD THIS!]
 import { useI18n } from "../i18n";
 
 export default function ChangePassword() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-
-  function getLocalUser() {
-    try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
-    catch { return {}; }
-  }
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
-    const u = getLocalUser();
-    setEmail(u?.email || "");
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Hide dummy emails for username-based accounts
+        const displayEmail = user.email.endsWith('@myanmatch.user') 
+          ? user.email.split('@')[0]
+          : user.email;
+        setUserEmail(displayEmail);
+      }
+    };
+    fetchUser();
   }, []);
 
-  function validate(pw) {
-    if ((pw || "").length < 8) return t("chpw.err.minLen");
-    if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) return t("chpw.err.mix");
-    return "";
-  }
+  // [!REMOVED!] The old `validate` function is completely removed.
 
+  // [!REPLACED!] This function is updated to remove password validation checks.
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg("");
 
     if (!currentPw) return setMsg(t("chpw.msg.enterCurrent"));
-    const v = validate(newPw);
-    if (v) return setMsg(v);
+    if (!newPw) return setMsg(t("chpw.err.newRequired")); // Add check for empty new password
     if (newPw !== confirmPw) return setMsg(t("chpw.err.mismatch"));
-
-    const u = getLocalUser();
-    const user_id = u?.user_id || u?.id;
-    if (!user_id) return setMsg(t("chpw.err.notSignedIn"));
 
     setBusy(true);
     try {
-      const res = await fetch("/api/users/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id,
-          old_password: currentPw,
-          new_password: newPw,
-        }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || t("chpw.err.changeFailed"));
+      // Supabase handles password updates directly
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) {
+        // Provide a more specific error for wrong old password
+        if (error.message.includes("Invalid credentials") || error.message.includes("incorrect password")) {
+          throw new Error(t("chpw.err.wrongCurrent"));
+        }
+        throw error;
+      }
 
       setMsg(t("chpw.success"));
       setCurrentPw("");
       setNewPw("");
       setConfirmPw("");
-      setTimeout(() => navigate("/Profile"), 900);
+      setTimeout(() => navigate("/Profile"), 1200); // Increased delay slightly for user to read success message
     } catch (err) {
       setMsg(err.message || t("chpw.err.tryAgain"));
     } finally {
@@ -101,7 +94,7 @@ export default function ChangePassword() {
           className="max-w-md mx-auto rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-5 shadow"
         >
           <div className="text-sm text-white/80 mb-3">
-            {t("chpw.signedInAs")} <span className="font-semibold">{email || "…"}</span>
+            {t("chpw.signedInAs")} <span className="font-semibold">{userEmail || "…"}</span>
           </div>
 
           <label className="block text-sm mb-1">{t("chpw.currentLabel")}</label>
@@ -116,14 +109,13 @@ export default function ChangePassword() {
           <label className="block text-sm mb-1">{t("chpw.newLabel")}</label>
           <input
             type="password"
-            className="w-full mb-2 px-4 py-3 rounded-xl bg-black/30 border border-white/15 outline-none"
+            className="w-full mb-4 px-4 py-3 rounded-xl bg-black/30 border border-white/15 outline-none"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
             autoComplete="new-password"
           />
-          <p className="text-[12px] text-white/60 mb-4">
-            {t("chpw.hint")}
-          </p>
+          
+          {/* [!REMOVED!] The hint message is no longer needed. */}
 
           <label className="block text-sm mb-1">{t("chpw.confirmLabel")}</label>
           <input
