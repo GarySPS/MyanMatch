@@ -5,7 +5,7 @@ import { supabase } from "../supabaseClient";
 
 // [!REPLACED!] - Smart API_BASE that works in both development and production
 const API_BASE = import.meta.env.PROD 
-  ? "https://myanmatch-api.onrender.com" // <-- IMPORTANT: REPLACE THIS URL
+  ? "https://myanmatch-api.onrender.com" 
   : "";
 
 const kycUrl = (path) => {
