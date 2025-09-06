@@ -123,7 +123,7 @@ export default function TermsPage() {
               </li>
               <li>
                 Spam, misleading links, fake giveaways, or phishing.
-                <p className="text-white/80">စပမ်း၊ လမ်းလွှဲစေသော လင့်ခ်များ၊ အတုအယောင်လက်ဆောင်များ သို့မဟုတ် phishing များ။</p>
+                <p className="text-white/80">အမှိုက်များ၊ လမ်းလွှဲစေသော လင့်ခ်များ၊ အတုအယောင်လက်ဆောင်များ သို့မဟုတ် phishing များ။</p>
               </li>
               <li>
                 Hate speech, illegal activity, or promotion of self‑harm.
