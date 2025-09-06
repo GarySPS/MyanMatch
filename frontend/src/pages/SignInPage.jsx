@@ -90,54 +90,51 @@ export default function SignInPage() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // [!REPLACED!] - The entire sign-in function is updated with the smart logic.
-  async function handleSignIn(e) {
-    e.preventDefault();
-    setErr("");
-    
-    const trimmedInput = loginInput.trim();
 
-    // 1. Validate inputs
-    if (!trimmedInput) {
-      const m = "Please enter your username or email.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!password) {
-      const m = "Please enter your password.";
-      setErr(m); showToast(m, "error"); return;
-    }
+async function handleSignIn(e) {
+  e.preventDefault();
+  setErr("");
+  
+  const trimmedInput = loginInput.trim();
 
-    setLoading(true);
-
-    let loginEmail;
-
-    // 2. THIS IS THE SMART LOGIC
-    // If the input contains '@', treat it as an email.
-    // Otherwise, treat it as a username and create the dummy email.
-    if (trimmedInput.includes('@')) {
-      loginEmail = trimmedInput.toLowerCase(); // It's a real email
-    } else {
-      loginEmail = `${trimmedInput.toLowerCase()}@myanmatch.user`; // It's a username
-    }
-
-    // 3. Sign in using the determined email (real or dummy)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password: password,
-    });
-
-    if (error) {
-      const m = "Invalid credentials. Please try again.";
-      setErr(m);
-      showToast(m, "error");
-      setLoading(false);
-      return;
-    }
-    
-    // On success, the useEffect above will handle caching and navigation.
-    // We don't need to call navigate() here anymore.
-    setLoading(false);
+  // 1. Validate inputs
+  if (!trimmedInput) {
+    const m = "Please enter your username or email.";
+    setErr(m); showToast(m, "error"); return;
   }
+  if (!password) {
+    const m = "Please enter your password.";
+    setErr(m); showToast(m, "error"); return;
+  }
+
+  setLoading(true);
+
+  let loginEmail;
+
+  // 2. THIS IS THE SMART LOGIC
+  if (trimmedInput.includes('@')) {
+    loginEmail = trimmedInput.toLowerCase();
+  } else {
+    loginEmail = `${trimmedInput.toLowerCase()}@myanmatch.user`;
+  }
+
+  // 3. Sign in using the determined email
+  const { error } = await supabase.auth.signInWithPassword({
+    email: loginEmail,
+    password: password,
+  });
+
+  if (error) {
+    const m = "Invalid credentials. Please try again.";
+    setErr(m);
+    showToast(m, "error");
+    setLoading(false);
+    return;
+  }
+  
+  // The onAuthStateChange useEffect handles navigation, but we MUST reset the loading state here.
+  setLoading(false); // [!ADD THIS LINE!]
+}
 
   return (
     <div

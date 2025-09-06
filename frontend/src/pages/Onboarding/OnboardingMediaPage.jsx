@@ -28,13 +28,6 @@ export default function OnboardingMediaPage() {
   const [uploadingIndex, setUploadingIndex] = useState(null);
   const userId = getLocalUserId();
 
-  useEffect(() => {
-    if (!userId) {
-      alert(t("media.err.signInFirst"));
-      navigate("/SignInPage");
-    }
-  }, [navigate, userId, t]);
-
   const handleFileChange = async (index, event) => {
     const file = event.target.files[0];
     if (!file || !userId) {
