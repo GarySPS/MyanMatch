@@ -48,80 +48,81 @@ export default function SignUpPage() {
 
 
 async function handleUsernameSignUp(e) {
-  e.preventDefault();
-  setErr("");
+  e.preventDefault();
+  setErr("");
 
-  if (!username || username.trim().length < 3) {
-    const m = "Username must be at least 3 characters long.";
-    setErr(m); showToast(m, "error"); return;
-  }
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    const m = "Username can only contain letters, numbers, and underscores.";
-    setErr(m); showToast(m, "error"); return;
-  }
-  if (!password || password.length < 6) {
-    const m = "Password must be at least 6 characters long.";
-    setErr(m); showToast(m, "error"); return;
-  }
-  if (password !== confirm) {
-    const m = "Passwords do not match.";
-    setErr(m); showToast(m, "error"); return;
-  }
+  if (!username || username.trim().length < 3) {
+    const m = "Username must be at least 3 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    const m = "Username can only contain letters, numbers, and underscores.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!password || password.length < 6) {
+    const m = "Password must be at least 6 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (password !== confirm) {
+    const m = "Passwords do not match.";
+    setErr(m); showToast(m, "error"); return;
+  }
 
-  setLoading(true);
+  setLoading(true);
 
-  const cleanUsername = username.toLowerCase().trim();
-  const dummyEmail = `${cleanUsername}@myanmatch.user`;
+  const cleanUsername = username.toLowerCase().trim();
+  const dummyEmail = `${cleanUsername}@myanmatch.user`;
 
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: dummyEmail,
-      password: password,
-    });
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: dummyEmail,
+      password: password,
+    });
 
-    if (authError) throw authError;
-    if (!authData.user || !authData.session) {
-      throw new Error("Sign up did not return a user or session.");
-    }
-    
-    await supabase.auth.setSession(authData.session);
-    
-    const userId = authData.user.id;
+    if (authError) throw authError;
+    if (!authData.user || !authData.session) {
+      throw new Error("Sign up did not return a user or session.");
+    }
+    
+    // [!CRITICAL FIX #1!] This saves the session so you stay logged in.
+    await supabase.auth.setSession(authData.session);
+    
+    const userId = authData.user.id;
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        username: username,
-        onboarding_complete: false,
-      })
-      .eq('user_id', userId);
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        username: username,
+        onboarding_complete: false,
+      })
+      .eq('user_id', userId);
 
-    if (profileError) throw profileError;
+    if (profileError) throw profileError;
 
-    // [!FIX!] Added `verified: true` because email confirmation is off.
-    const cache = {
-      id: userId,
-      user_id: userId,
-      username: username,
-      onboarding_complete: false,
-      is_admin: false,
-      verified: true,
-    };
-    localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+    // [!CRITICAL FIX #2!] Caches the user correctly for the next page.
+    const cache = {
+      id: userId,
+      user_id: userId,
+      username: username,
+      onboarding_complete: false,
+      is_admin: false,
+      verified: true, // User is verified since email confirmation is off
+    };
+    localStorage.setItem("myanmatch_user", JSON.stringify(cache));
 
-    navigate("/onboarding/terms");
+    navigate("/onboarding/terms");
 
-  } catch (error) {
-    console.error("Sign-up failed:", error.message);
-    if (error.message.includes("User already registered")) {
-      const m = "This username is already taken. Please choose another one.";
-      setErr(m); showToast(m, "error");
-    } else {
-      setErr(error.message); showToast(error.message, "error");
-    }
-  } finally {
-    setLoading(false);
-  }
+  } catch (error) {
+    console.error("Sign-up failed:", error.message);
+    if (error.message.includes("User already registered")) {
+      const m = "This username is already taken. Please choose another one.";
+      setErr(m); showToast(m, "error");
+    } else {
+      setErr(error.message); showToast(error.message, "error");
+    }
+  } finally {
+    setLoading(false);
+  }
 }
 
   return (
