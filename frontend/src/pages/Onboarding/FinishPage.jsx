@@ -212,7 +212,7 @@ const handleFinish = async () => {
   const payload = buildPayload(profileData || {});
   payload.user_id = uid;
 
-  // Voice Prompt handling (your existing logic is fine here)
+  // Voice Prompt handling
   try {
     const vp = profileData?.voicePrompt;
     let voicePromptJSON = undefined;
@@ -286,9 +286,7 @@ const handleFinish = async () => {
     console.error("Failed to cache full profile:", e);
   }
 
-  // Schedule welcome likes by calling your backend
   try {
-    console.log("Onboarding complete, scheduling welcome likes...");
     fetch(`/api/user/schedule-welcome-likes`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${session.access_token}` }
