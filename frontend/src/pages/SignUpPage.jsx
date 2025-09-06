@@ -46,85 +46,84 @@ export default function SignUpPage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
-  // [!REPLACED!]
-  async function handleUsernameSignUp(e) {
-    e.preventDefault();
-    setErr("");
 
-    if (!username || username.trim().length < 3) {
-      const m = "Username must be at least 3 characters long.";
-      setErr(m); showToast(m, "error"); return;
+async function handleUsernameSignUp(e) {
+  e.preventDefault();
+  setErr("");
+
+  if (!username || username.trim().length < 3) {
+    const m = "Username must be at least 3 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    const m = "Username can only contain letters, numbers, and underscores.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!password || password.length < 6) {
+    const m = "Password must be at least 6 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (password !== confirm) {
+    const m = "Passwords do not match.";
+    setErr(m); showToast(m, "error"); return;
+  }
+
+  setLoading(true);
+
+  const cleanUsername = username.toLowerCase().trim();
+  const dummyEmail = `${cleanUsername}@myanmatch.user`;
+
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: dummyEmail,
+      password: password,
+    });
+
+    if (authError) throw authError;
+    if (!authData.user || !authData.session) {
+      throw new Error("Sign up did not return a user or session.");
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      const m = "Username can only contain letters, numbers, and underscores.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!password || password.length < 6) {
-      const m = "Password must be at least 6 characters long.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (password !== confirm) {
-      const m = "Passwords do not match.";
-      setErr(m); showToast(m, "error"); return;
-    }
+    
+    // [!FIX!] Manually set and save the session to ensure it persists.
+    await supabase.auth.setSession(authData.session);
+    localStorage.setItem("sb_access_token", authData.session.access_token);
+    localStorage.setItem("sb_refresh_token", authData.session.refresh_token);
 
-    setLoading(true);
+    const userId = authData.user.id;
 
-    const cleanUsername = username.toLowerCase().trim();
-    const dummyEmail = `${cleanUsername}@myanmatch.user`;
-
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: dummyEmail,
-        password: password,
-      });
-
-      if (authError) throw authError;
-      if (!authData.user || !authData.session) {
-        throw new Error("Sign up did not return a user or session.");
-      }
-      
-      // =======================================================================
-      // [! THIS IS THE CRITICAL FIX !]
-      // Manually set the session to ensure it persists across all pages.
-      await supabase.auth.setSession(authData.session);
-      // =======================================================================
-
-      const userId = authData.user.id;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          username: username,
-          onboarding_complete: false,
-        })
-        .eq('user_id', userId);
-
-      if (profileError) throw profileError;
-
-      const cache = {
-        id: userId,
-        user_id: userId,
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
         username: username,
         onboarding_complete: false,
-        is_admin: false,
-      };
-      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+      })
+      .eq('user_id', userId);
 
-      navigate("/onboarding/terms");
+    if (profileError) throw profileError;
 
-    } catch (error) {
-      console.error("Sign-up failed:", error.message);
-      if (error.message.includes("User already registered")) {
-        const m = "This username is already taken. Please choose another one.";
-        setErr(m); showToast(m, "error");
-      } else {
-        setErr(error.message); showToast(error.message, "error");
-      }
-    } finally {
-      setLoading(false);
+    const cache = {
+      id: userId,
+      user_id: userId,
+      username: username,
+      onboarding_complete: false,
+      is_admin: false,
+    };
+    localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+
+    navigate("/onboarding/terms");
+
+  } catch (error) {
+    console.error("Sign-up failed:", error.message);
+    if (error.message.includes("User already registered")) {
+      const m = "This username is already taken. Please choose another one.";
+      setErr(m); showToast(m, "error");
+    } else {
+      setErr(error.message); showToast(error.message, "error");
     }
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div

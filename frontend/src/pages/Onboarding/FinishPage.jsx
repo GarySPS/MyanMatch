@@ -201,8 +201,23 @@ const handleFinish = async () => {
   setError("");
   setSuccess(false);
 
-  const { data: { user, session }, error: authErr } = await supabase.auth.getSession();
-  if (authErr || !user?.id || !session) {
+  let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  // [!FIX!] If the session was lost, this logic attempts to recover it.
+  if (!session || sessionError) {
+    const access_token = localStorage.getItem("sb_access_token");
+    const refresh_token = localStorage.getItem("sb_refresh_token");
+
+    if (access_token && refresh_token) {
+      const { data: refreshedData, error: refreshError } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (!refreshError && refreshedData) {
+        session = refreshedData.session;
+      }
+    }
+  }
+
+  const user = session?.user;
+  if (!user?.id) {
     setError("You must be logged in to save your profile.");
     setSaving(false);
     return;
@@ -224,31 +239,14 @@ const handleFinish = async () => {
       fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
       const url = apiUrl("voice/onboarding/voice");
       const res = await fetch(url, { method: "POST", body: fd });
-      if (!res.ok) {
-        console.error("voice upload failed:", await res.text());
-        voicePromptJSON = null;
-      } else {
+      if (!res.ok) { voicePromptJSON = null; } else {
         const data = await res.json();
-        voicePromptJSON = {
-          prompt: data.prompt || vp.prompt || null,
-          url: data.url || null,
-          path: data.path || null,
-          bucket: data.bucket || "onboarding",
-          duration: data.duration ?? vp.duration ?? null,
-          mime: data.mime || baseMime(vp.file.type),
-        };
+        voicePromptJSON = { prompt: data.prompt || vp.prompt || null, url: data.url || null, path: data.path || null, bucket: data.bucket || "onboarding", duration: data.duration ?? vp.duration ?? null, mime: data.mime || baseMime(vp.file.type) };
       }
-    } else if (vp?.url) {
-      voicePromptJSON = { prompt: vp.prompt, url: vp.url, duration: vp.duration ?? null };
-    } else if (vp === null) {
-      voicePromptJSON = null;
-    }
-    if (voicePromptJSON !== undefined) {
-      payload.voicePrompt = voicePromptJSON;
-    }
-  } catch (e) {
-    console.warn("voice prompt mapping failed:", e);
-  }
+    } else if (vp?.url) { voicePromptJSON = { prompt: vp.prompt, url: vp.url, duration: vp.duration ?? null }; }
+    else if (vp === null) { voicePromptJSON = null; }
+    if (voicePromptJSON !== undefined) { payload.voicePrompt = voicePromptJSON; }
+  } catch (e) { console.warn("voice prompt mapping failed:", e); }
 
   const { error: dbErr } = await supabase
     .from("profiles")
@@ -261,7 +259,6 @@ const handleFinish = async () => {
     return;
   }
 
-  // [!FIX!] Correctly fetch the full profile and cache it in localStorage.
   try {
     const { data: fullProfile } = await supabase
       .from("profiles")
@@ -282,25 +279,19 @@ const handleFinish = async () => {
       };
       localStorage.setItem("myanmatch_user", JSON.stringify(cache));
     }
-  } catch (e) {
-    console.error("Failed to cache full profile:", e);
-  }
+  } catch (e) { console.error("Failed to cache full profile:", e); }
 
   try {
     fetch(`/api/user/schedule-welcome-likes`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${session.access_token}` }
     });
-  } catch (e) {
-    console.error("Failed to schedule welcome likes:", e);
-  }
+  } catch (e) { console.error("Failed to schedule welcome likes:", e); }
 
   setSaving(false);
   setSuccess(true);
 
-  setTimeout(() => {
-    navigate("/HomePage", { replace: true });
-  }, 800);
+  setTimeout(() => { navigate("/HomePage", { replace: true }); }, 800);
 };
 
   return (
