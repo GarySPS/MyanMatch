@@ -56,7 +56,7 @@ async function handleUsernameSignUp(e) {
     setErr(m); showToast(m, "error"); return;
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    const m = "Username can only contain letters, numbers, and underscores.";
+    const m = "Username can only contain letters, numbers, and underscores. ဉပမာ username:mgmg2000";
     setErr(m); showToast(m, "error"); return;
   }
   if (!password || password.length < 6) {
@@ -138,7 +138,7 @@ async function handleUsernameSignUp(e) {
         <h2 className="text-2xl font-bold text-[#893086] text-center">Create your account</h2>
         <p className="text-base font-medium text-gray-700 mb-6 text-center">အကောင့်အသစ်ဖောက်မည်</p>
         <form onSubmit={handleUsernameSignUp} className="w-full">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Username<span className="text-gray-400">(အကောင့်နာမ်မည်ပေး)</span></label>
           <input
             type="text"
             className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
