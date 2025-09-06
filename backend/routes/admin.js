@@ -1,28 +1,29 @@
+// backend/routes/admin.js
+
 const express = require('express');
 const router = express.Router();
 
+// [!REPLACED!] - This entire route is updated to be simpler and more correct.
 router.get('/users', async (req, res) => {
-  const supabase = req.supabase;
-  try {
-    const { data, error } = await supabase
-      .from('app_users')
-      // ✅ THE FIX IS HERE: Changed 'id' to 'user_id' to match the database view
-      .select('user_id, short_id, email, is_admin, created_at')
-      .order('created_at', { ascending: false });
+  const supabase = req.supabase;
+  try {
+    // Now we select from our clean 'app_users' view
+    const { data, error } = await supabase
+      .from('detailed_users')
+      .select('id, username, email, short_id, is_admin, created_at')
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    
-    // Rename 'user_id' back to 'id' so the frontend doesn't break
-    const users = (data || []).map(u => ({...u, id: u.user_id}));
-
-    res.json({ users });
-  } catch (e) {
-    console.error('Admin user list error:', e);
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
+    if (error) throw error;
+    
+    res.json({ users: data || [] });
+  } catch (e) {
+    console.error('Admin user list error:', e);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
 });
 
-// GET /api/admin/reports
+
+// GET /api/admin/reports (This one is fine, no changes needed)
 router.get('/reports', async (req, res) => {
     const supabase = req.supabase;
     try {
@@ -39,38 +40,34 @@ router.get('/reports', async (req, res) => {
     }
 });
 
-// POST /api/admin/impersonate
+// POST /api/admin/impersonate (This one is fine, no changes needed)
 router.post('/impersonate', async (req, res) => {
-  const { user_id } = req.body;
-  if (!user_id) {
-    return res.status(400).json({ error: 'user_id is required' });
-  }
+  const { user_id } = req.body;
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id is required' });
+  }
 
-  const supabase = req.supabase;
-  try {
-    // First, get the user's email from their ID
-    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(user_id);
-    if (userError || !user) {
-      throw userError || new Error('User not found');
-    }
+  const supabase = req.supabase;
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(user_id);
+    if (userError || !user) {
+      throw userError || new Error('User not found');
+    }
 
-    // Now generate the magic link
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email,
-      options: {
-        // Redirect to the frontend homepage after they click the link
-        redirectTo: '/',
-      }
-    });
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: user.email,
+      options: {
+        redirectTo: '/',
+      }
+    });
 
-    if (error) throw error;
-
-    res.json({ magic_link: data.properties.action_link });
-  } catch (e) {
-    console.error('Impersonation link generation failed:', e.message);
-    res.status(500).json({ error: 'Could not generate login link.' });
-  }
+    if (error) throw error;
+    res.json({ magic_link: data.properties.action_link });
+  } catch (e) {
+    console.error('Impersonation link generation failed:', e.message);
+    res.status(500).json({ error: 'Could not generate login link.' });
+  }
 });
 
 
