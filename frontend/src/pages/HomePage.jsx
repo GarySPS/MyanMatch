@@ -722,18 +722,29 @@ export default function HomePage() {
   const [toastType, setToastType] = useState("success");
   const [toastText, setToastText] = useState("");
 
-// === SAFE CURRENT USER ID (prevents bad queries) ===
-const currentUser = (() => {
-  try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
-  catch { return {}; }
-})();
+  // ✅ FIXED: Added the missing showToast helper function
+  function showToast(text, type = "success") {
+    setToastText(text);
+    setToastType(type);
+    setToastOpen(true);
+    if (showToast.timer) clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+      setToastOpen(false);
+    }, 3000);
+  }
 
-// accept only a UUID-like id (prevents sending user_id=eq.)
-const myId = (() => {
-  const c = currentUser || {};
-  const id = c.user_id || c.id || "";
-  return typeof id === "string" && /^[0-9a-f-]{20,}$/i.test(id) ? id : null;
-})();
+  // === SAFE CURRENT USER ID (prevents bad queries) ===
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
+    catch { return {}; }
+  })();
+
+  // accept only a UUID-like id (prevents sending user_id=eq.)
+  const myId = (() => {
+    const c = currentUser || {};
+    const id = c.user_id || c.id || "";
+    return typeof id === "string" && /^[0-9a-f-]{20,}$/i.test(id) ? id : null;
+  })();
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -787,7 +798,6 @@ const myId = (() => {
         .from("profiles")
         .select("*")
         .eq('is_bot', false)
-        // ✅ THE FIX IS HERE: The .join(",") correctly formats the list for Supabase
         .not("user_id", "in", `(${excludeIds.join(",")})`);
 
       if (wantGenders.length > 0) {
@@ -896,114 +906,110 @@ const myId = (() => {
   const verified = !!user.is_verified;
   const ageDisplay = getAge(user);
 
-// convert any signed URL -> public URL (bucket is public)
-const signedToPublic = (u) => {
-  const s = String(u || "");
-  const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
-  if (!m) return s;
-  const [, bucket, keyRaw] = m;
-  const key = decodeURIComponent(keyRaw);
-  const { data } = supabase.storage.from(bucket).getPublicUrl(key);
-  return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
-};
+  // convert any signed URL -> public URL (bucket is public)
+  const signedToPublic = (u) => {
+    const s = String(u || "");
+    const m = s.match(/storage\/v1\/object\/sign\/([^/]+)\/([^?]+)/);
+    if (!m) return s;
+    const [, bucket, keyRaw] = m;
+    const key = decodeURIComponent(keyRaw);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(key);
+    return data?.publicUrl || s.replace("/object/sign/", "/object/public/").split("?")[0];
+  };
 
-// turn objects/paths/urls into displayable URLs (same logic as UserProfilePage)
-const toUrl = (item) => {
-  if (!item) return null;
-  if (typeof item === "object") {
-    const u = item.url || item.publicUrl || item.signedUrl;
-    if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
-    if (item.path) item = item.path;
+  // turn objects/paths/urls into displayable URLs (same logic as UserProfilePage)
+  const toUrl = (item) => {
+    if (!item) return null;
+    if (typeof item === "object") {
+      const u = item.url || item.publicUrl || item.signedUrl;
+      if (u) return /^https?:\/\//i.test(u) ? signedToPublic(u) : u;
+      if (item.path) item = item.path;
+    }
+    const s = String(item).trim();
+    if (!s) return null;
+    if (/^https?:\/\//i.test(s)) return signedToPublic(s);
+
+    const key = s.replace(/^public\//, "").replace(/^media\//, "");
+    const bucket = s.startsWith("onboarding/") ? "onboarding" : "media";
+    const { data } = supabase.storage.from(bucket).getPublicUrl(
+      bucket === "onboarding" ? key.replace(/^onboarding\//, "") : key
+    );
+    return data?.publicUrl || null;
+  };
+
+  // gather the same set of possible fields as UserProfilePage
+  const arr = (v) => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (s.startsWith("[")) { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch {} }
+      if (s.includes(",")) return s.split(",").map(x => x.trim()).filter(Boolean);
+      return [s];
+    }
+    return [v];
+  };
+
+  const rawCandidates = [
+    ...arr(user.media_paths),
+    ...arr(user.media),
+    ...arr(user.photos),
+    ...arr(user.images),
+    ...arr(user.photo_urls),
+    ...arr(user.gallery),
+    user.photo1, user.photo2, user.photo3, user.photo4, user.photo5, user.photo6,
+  ].filter(Boolean);
+
+  const media = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
+
+  function isVideo(u) {
+    return /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
   }
-  const s = String(item).trim();
-  if (!s) return null;
-  if (/^https?:\/\//i.test(s)) return signedToPublic(s);
 
-  const key = s.replace(/^public\//, "").replace(/^media\//, "");
-  const bucket = s.startsWith("onboarding/") ? "onboarding" : "media";
-  const { data } = supabase.storage.from(bucket).getPublicUrl(
-    bucket === "onboarding" ? key.replace(/^onboarding\//, "") : key
-  );
-  return data?.publicUrl || null;
-};
+  function renderMedia(idx) {
+    const url = media[idx];
+    if (!url) return null;
+    const isVid = isVideo(url);
 
-// gather the same set of possible fields as UserProfilePage
-const arr = (v) => {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (s.startsWith("[")) { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch {} }
-    if (s.includes(",")) return s.split(",").map(x => x.trim()).filter(Boolean);
-    return [s];
-  }
-  return [v];
-};
-
-const rawCandidates = [
-  ...arr(user.media_paths),
-  ...arr(user.media),
-  ...arr(user.photos),
-  ...arr(user.images),
-  ...arr(user.photo_urls),
-  ...arr(user.gallery),
-  user.photo1, user.photo2, user.photo3, user.photo4, user.photo5, user.photo6,
-].filter(Boolean);
-
-const media = [...new Set(rawCandidates.map(toUrl).filter(Boolean))];
-
-// ✅ define isVideo here once
-function isVideo(u) {
-  return /\.(mp4|webm|mov|m4v|3gp)$/i.test(String(u).split("?")[0]);
-}
-
-function renderMedia(idx) {
-  const url = media[idx];
-  if (!url) return null;
-  const isVid = isVideo(url);
-
-  return (
-    <div key={url || idx} className="mx-4 relative group">
-      <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
-        {isVid ? (
-          <video
-            src={url}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            loop
-            controls
-          />
-        ) : (
-          <img
-            src={url}
-            alt={`${name}'s media ${idx + 1}`}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
-        )}
+    return (
+      <div key={url || idx} className="mx-4 relative group">
+        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-lg aspect-[4/5] bg-white/5">
+          {isVid ? (
+            <video
+              src={url}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+              loop
+              controls
+            />
+          ) : (
+            <img
+              src={url}
+              alt={`${name}'s media ${idx + 1}`}
+              className="w-full h-full object-cover"
+              draggable={false}
+            />
+          )}
+        </div>
+        <button
+          onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
+          className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
+                    hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
+          aria-label={t("home.btn.likePhoto")}
+        >
+          <FaHeart size={20} />
+        </button>
       </div>
-      <button
-        onClick={() => { setShowPhotoModal(true); setModalPhotoIdx(idx); }}
-        className="absolute bottom-4 right-4 w-12 h-12 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePhoto")}
-      >
-        <FaHeart size={20} />
-      </button>
-    </div>
-  );
-}
+    );
+  }
 
-
-  // prompts[]
   const prompts = Array.isArray(user.prompts)
     ? user.prompts
     : (typeof user.prompts === "string" && user.prompts.startsWith("[")
         ? (() => { try { const a = JSON.parse(user.prompts); return Array.isArray(a) ? a : []; } catch { return []; } })()
         : []);
 
-  // Voice prompt resolver
   let vp = user.voicePrompt ?? user.voiceprompt ?? user.voice_prompt ?? null;
   if (vp && typeof vp === "string") {
     try { vp = JSON.parse(vp); } catch {}
@@ -1017,12 +1023,10 @@ function renderMedia(idx) {
     return data?.publicUrl || null;
   }
 
-  // 1) Prefer a direct, already‑public URL saved by Finish/Edit
   let voiceUrl =
     (vp?.url && !String(vp.url).startsWith("blob:") ? String(vp.url) : null) ||
     null;
 
-  // 2) Otherwise, build a public URL from bucket/path
   if (!voiceUrl) {
     const path =
       vp?.path ?? vp?.audio_path ?? vp?.storagePath ?? null;
@@ -1030,21 +1034,14 @@ function renderMedia(idx) {
     if (path) voiceUrl = toPublicFromPath(path, bucket);
   }
 
-  // 3) Title shown on the card
   const voiceTitle = (vp?.prompt && String(vp.prompt).trim()) || t("home.voicePrompt");
-
-  // derived display fields
   const gender = user.gender || user.genders || user.sex || null;
   const sexuality = user.orientation || user.sexuality;
   const height = user.height;
   const job = user.job || user.job_title;
-  const workplace = user.workplace || null;
   const education = user.education || user.education_level;
-  const schoolsArr = arr(user.schools);
-  const school = user.school || user.education_school || (schoolsArr[0] || null);
   const hometown = user.hometown || null;
   const politics = user.politics || user.political_belief;
-  const location = user.location || user.hometown;
   const relationship = user.relationship;
   const children = user.children || user.have_children || null;
   const weed = (user.weed ?? user.cannabis) ?? null;
@@ -1105,23 +1102,23 @@ function renderMedia(idx) {
 
   const afterGiftSentAdvance = () => setIndex((i) => i + 1);
 
-function renderPrompt(p, idx) {
+  function renderPrompt(p, idx) {
+    return (
+      <div key={`prompt-${idx}`} className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
+        <div className="text-lime-300 font-semibold mb-1">{resolvePromptTitle(t, p.prompt)}</div>
+        <p className="text-white/90 text-lg leading-relaxed">{p.answer}</p>
+        <button
+          onClick={() => openGiftWithOptionalComment(`"${p.answer}"`)}
+          className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
+                    hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
+          aria-label={t("home.btn.likePrompt")}
+        >
+          <FaHeart size={18} />
+        </button>
+      </div>
+    );
+  }
   return (
-    <div key={`prompt-${idx}`} className="mx-4 relative group p-5 rounded-2xl bg-white/5 border border-white/10">
-      <div className="text-lime-300 font-semibold mb-1">{resolvePromptTitle(t, p.prompt)}</div>
-      <p className="text-white/90 text-lg leading-relaxed">{p.answer}</p>
-      <button
-        onClick={() => openGiftWithOptionalComment(`"${p.answer}"`)}
-        className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white
-                   hover:bg-pink-500 hover:scale-110 active:scale-100 transition-all duration-200 opacity-0 group-hover:opacity-100"
-        aria-label={t("home.btn.likePrompt")}
-      >
-        <FaHeart size={18} />
-      </button>
-    </div>
-  );
-}
-return (
     <div className="relative min-h-dvh w-full text-white overflow-x-hidden bg-[#101017]">
       {/* FULL-PAGE BACKGROUND (Simplified) */}
       <div className="fixed inset-0 -z-10 opacity-50">
@@ -1138,16 +1135,16 @@ return (
               {name}
               {verified && <FaCheckCircle className="text-sky-400" size={18} title={t("home.verified")} />}
             </h1>
-<div className="flex items-center gap-2 text-sm font-medium">
-  {Number.isFinite(ageDisplay) && (
-    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/90 font-bold">
-      {ageDisplay}
-    </span>
-  )}
-  {Number.isFinite(user._distKm) && (
-    <span className="text-white/60">~{Math.round(user._distKm)}km away</span>
-  )}
-</div>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {Number.isFinite(ageDisplay) && (
+                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/90 font-bold">
+                  {ageDisplay}
+                </span>
+              )}
+              {Number.isFinite(user._distKm) && (
+                <span className="text-white/60">~{Math.round(user._distKm)}km away</span>
+              )}
+            </div>
           </div>
           <button
             onClick={() => setReportOpen(true)}
@@ -1161,43 +1158,43 @@ return (
       </header>
 
       {/* CONTENT SCROLL — with adjusted padding for new header */}
-     <div className="pt-[calc(env(safe-area-inset-top)+88px)] pb-[calc(env(safe-area-inset-bottom)+210px)] space-y-4">
+      <div className="pt-[calc(env(safe-area-inset-top)+88px)] pb-[calc(env(safe-area-inset-bottom)+210px)] space-y-4">
 
-{/* Unified media order: photos or videos */}
-{media[0] && renderMedia(0)}
+        {/* Unified media order: photos or videos */}
+        {media[0] && renderMedia(0)}
 
-{/* 2) About card */}
-<div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-  <h2 className="text-lg font-bold mb-3 text-white/90">About {name}</h2>
-  <ul className="flex flex-wrap gap-2">
-    <InfoTag icon={<FaVenusMars />} text={translateSingle(t, "gender", gender)} />
-    <InfoTag icon={<FaTransgender />} text={translateSingle(t, "sexuality", sexuality)} />
-    <InfoTag icon={<FaRulerVertical />} text={height} />
-    <InfoTag icon={<FaBriefcase />} text={job} />
-    <InfoTag icon={<FaGraduationCap />} text={translateSingle(t, "education", education)} />
-    <InfoTag icon={<FaHome />} text={hometown} />
-    <InfoTag icon={<FaBook />} text={translateArray(t, "religion", user.religion)} />
-    <InfoTag icon={<FaGlobeAmericas />} text={translateArray(t, "ethnicity", user.ethnicity)} />
-    <InfoTag icon={<FaBalanceScale />} text={translateSingle(t, "politics", politics)} />
-    <InfoTag icon={<FaGlassWhiskey />} text={translateSingle(t, "yesno", user.drinking)} />
-    <InfoTag icon={<FaSmoking />} text={translateSingle(t, "yesno", user.smoking)} />
-    <InfoTag icon={<FaCannabis />} text={translateSingle(t, "yesno", weed)} />
-    <InfoTag icon={<FaSyringe />} text={translateSingle(t, "yesno", drugs)} />
-    <InfoTag icon={<FaChild />} text={translateSingle(t, "children", children)} />
-    <InfoTag icon={<FaUsers />} text={translateArray(t, "familyPlans", user.family_plans)} />
-    <InfoTag icon={<FaCommentDots />} text={translateSingle(t, "intention", relationship)} />
-  </ul>
-</div>
+        {/* 2) About card */}
+        <div className="mx-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+          <h2 className="text-lg font-bold mb-3 text-white/90">About {name}</h2>
+          <ul className="flex flex-wrap gap-2">
+            <InfoTag icon={<FaVenusMars />} text={translateSingle(t, "gender", gender)} />
+            <InfoTag icon={<FaTransgender />} text={translateSingle(t, "sexuality", sexuality)} />
+            <InfoTag icon={<FaRulerVertical />} text={height} />
+            <InfoTag icon={<FaBriefcase />} text={job} />
+            <InfoTag icon={<FaGraduationCap />} text={translateSingle(t, "education", education)} />
+            <InfoTag icon={<FaHome />} text={hometown} />
+            <InfoTag icon={<FaBook />} text={translateArray(t, "religion", user.religion)} />
+            <InfoTag icon={<FaGlobeAmericas />} text={translateArray(t, "ethnicity", user.ethnicity)} />
+            <InfoTag icon={<FaBalanceScale />} text={translateSingle(t, "politics", politics)} />
+            <InfoTag icon={<FaGlassWhiskey />} text={translateSingle(t, "yesno", user.drinking)} />
+            <InfoTag icon={<FaSmoking />} text={translateSingle(t, "yesno", user.smoking)} />
+            <InfoTag icon={<FaCannabis />} text={translateSingle(t, "yesno", weed)} />
+            <InfoTag icon={<FaSyringe />} text={translateSingle(t, "yesno", drugs)} />
+            <InfoTag icon={<FaChild />} text={translateSingle(t, "children", children)} />
+            <InfoTag icon={<FaUsers />} text={translateArray(t, "familyPlans", user.family_plans)} />
+            <InfoTag icon={<FaCommentDots />} text={translateSingle(t, "intention", relationship)} />
+          </ul>
+        </div>
 
-{/* Continue with rest of media + prompts */}
-{media[1] && renderMedia(1)}
-{media[2] && renderMedia(2)}
-{prompts[0] && prompts[0].prompt && prompts[0].answer && renderPrompt(prompts[0], 0)}
-{media[3] && renderMedia(3)}
-{prompts[1] && prompts[1].prompt && prompts[1].answer && renderPrompt(prompts[1], 1)}
-{media[4] && renderMedia(4)}
-{prompts[2] && prompts[2].prompt && prompts[2].answer && renderPrompt(prompts[2], 2)}
-{media[5] && renderMedia(5)}
+        {/* Continue with rest of media + prompts */}
+        {media[1] && renderMedia(1)}
+        {media[2] && renderMedia(2)}
+        {prompts[0] && prompts[0].prompt && prompts[0].answer && renderPrompt(prompts[0], 0)}
+        {media[3] && renderMedia(3)}
+        {prompts[1] && prompts[1].prompt && prompts[1].answer && renderPrompt(prompts[1], 1)}
+        {media[4] && renderMedia(4)}
+        {prompts[2] && prompts[2].prompt && prompts[2].answer && renderPrompt(prompts[2], 2)}
+        {media[5] && renderMedia(5)}
 
         {/* 4) Voice Prompt */}
         {voiceUrl && (
@@ -1231,7 +1228,7 @@ return (
                     disabled={busy}
                     aria-label={t("home.btn.gift")}
                     className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white grid place-items-center shadow-2xl shadow-purple-500/30
-                               hover:scale-105 active:scale-95 transition-transform disabled:opacity-60"
+                                hover:scale-105 active:scale-95 transition-transform disabled:opacity-60"
                     title={t("home.btn.giftTitle")}
                 >
                     <FaGift size={28} />
@@ -1251,14 +1248,14 @@ return (
       </div>
 
       {/* MODALS (Your existing modal components are called here) */}
-<PhotoLikeModal
-  open={showPhotoModal}
-  photo={media[modalPhotoIdx]}
-  name={name}
-  onClose={() => setShowPhotoModal(false)}
-  onLike={(comment) => { setShowPhotoModal(false); likeOrSuper("like", comment || null); }}
-  onSuperlike={(comment) => { setShowPhotoModal(false); openGiftWithOptionalComment(comment || ""); }}
-/>
+      <PhotoLikeModal
+        open={showPhotoModal}
+        photo={media[modalPhotoIdx]}
+        name={name}
+        onClose={() => setShowPhotoModal(false)}
+        onLike={(comment) => { setShowPhotoModal(false); likeOrSuper("like", comment || null); }}
+        onSuperlike={(comment) => { setShowPhotoModal(false); openGiftWithOptionalComment(comment || ""); }}
+      />
 
       <ReportModal
         open={reportOpen}
