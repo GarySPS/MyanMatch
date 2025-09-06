@@ -284,62 +284,6 @@ function GiftSendModal({ open, onClose, senderId, receiverId, onSent, presetComm
   const [selectedGift, setSelectedGift] = useState(null);
   const [comment, setComment] = useState(presetComment || "");
 
-// src/pages/UserProfilePage.jsx
-
-// REPLACE THIS ENTIRE useEffect HOOK
-
-  useEffect(() => {
-    async function run() {
-      setLoading(true);
-
-      // 1. Fetch my own plan (for daily action limits)
-      if (myId) {
-        const { data: meRow } = await supabase
-          .from("profiles")
-          .select("membership_plan")
-          .eq("user_id", myId)
-          .maybeSingle();
-        setPlan(meRow?.membership_plan || "free");
-      }
-
-      // 2. Stop if we don't know who to look for
-      if (!viewingUserId) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // 3. Fetch the viewed user's main profile and supplementary data together
-      const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
-        // This query is correct
-        supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-        
-        // [!FIX!] The bug was here. Changed .select("id",...) and .eq("id",...) to use "user_id" to match your database table.
-        supabase.from("app_users").select("user_id, short_id, verified_at").eq("user_id", viewingUserId).maybeSingle(),
-      ]);
-
-      // 4. Show "Not Found" if there's any error OR if the main profile is missing.
-      if (profErr || uerr || !prof) {
-        if (profErr) console.error("Fetch profile error:", profErr);
-        if (uerr) console.error("Fetch user error:", uerr);
-        if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
-        setUser(null);
-      } else {
-        // If we get here, 'prof' is guaranteed to be a valid object.
-        const verified = !!(prof.is_verified) || !!(urow?.verified_at);
-        setUser({
-          ...prof,
-          _verified: verified,
-          _kyc_status: urow?.kyc_status || null,
-          _short_id: urow?.short_id || null,
-        });
-      }
-      setLoading(false);
-    }
-
-    run();
-  }, [viewingUserId, myId]);
-
   async function handleSend() {
     if (!selectedGift || loading) return;
     setLoading(true);
@@ -717,58 +661,56 @@ function showToast(text, type = "success") {
   const isSelf = viewingUserId && myId && String(viewingUserId) === String(myId);
 
 
-  useEffect(() => {
-    async function run() {
-      setLoading(true);
+  useEffect(() => {
+    async function run() {
+      setLoading(true);
 
-      // 1. Fetch the current user's plan
-      if (myId) {
-        const { data: meRow } = await supabase
-          .from("profiles")
-          .select("membership_plan")
-          .eq("user_id", myId)
-          .maybeSingle();
-        setPlan(meRow?.membership_plan || "free");
-      }
+      // 1. Fetch my own plan (for daily action limits)
+      if (myId) {
+        const { data: meRow } = await supabase
+          .from("profiles")
+          .select("membership_plan")
+          .eq("user_id", myId)
+          .maybeSingle();
+        setPlan(meRow?.membership_plan || "free");
+      }
 
-      // 2. Stop if no user ID is being viewed
-      if (!viewingUserId) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
+      // 2. Stop if we don't know who to look for
+      if (!viewingUserId) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-      // 3. Fetch data for the user being viewed
-      const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
-        // This query for the 'profiles' table is correct
-        supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
-        
-        // [!THE FINAL FIX IS HERE!] 
-        // Changed .select("id",...) and .eq("id",...) to use "user_id" 
-        // to match your actual database schema.
-        supabase.from("app_users").select("user_id, short_id, verified_at").eq("user_id", viewingUserId).maybeSingle(),
-      ]);
+      // 3. Fetch the viewed user's main profile and supplementary data together
+      const [{ data: prof, error: profErr }, { data: urow, error: uerr }] = await Promise.all([
+        // This query is correct
+        supabase.from("profiles").select("*").eq("user_id", viewingUserId).maybeSingle(),
+        
+        // [!FIX!] Changed .eq("id",...) to .eq("user_id",...) to match your database view.
+        supabase.from("app_users").select("user_id, short_id, kyc_status, verified_at").eq("user_id", viewingUserId).maybeSingle(),
+      ]);
 
-      // 4. Set the user state based on the fetched data
-      if (profErr || uerr || !prof) {
-        if (profErr) console.error("Fetch profile error:", profErr);
-        if (uerr) console.error("Fetch user error:", uerr);
-        if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
-        setUser(null);
-      } else {
-        const verified = !!(prof.is_verified) || !!(urow?.verified_at);
-        setUser({
-          ...prof,
-          _verified: verified,
-          _kyc_status: urow?.kyc_status || null,
-          _short_id: urow?.short_id || null,
-        });
-      }
-      setLoading(false);
-    }
+      // 4. Show "Not Found" if there's any error OR if the main profile is missing.
+      if (profErr || uerr || !prof) {
+        if (profErr) console.error("Fetch profile error:", profErr);
+        if (uerr) console.error("Fetch user error:", uerr);
+        if (!prof) console.warn(`Profile not found in 'profiles' table for user_id: ${viewingUserId}`);
+        setUser(null);
+      } else {
+        const verified = !!(prof.is_verified) || !!(urow?.verified_at);
+        setUser({
+          ...prof,
+          _verified: verified,
+          _kyc_status: urow?.kyc_status || null,
+          _short_id: urow?.short_id || null,
+        });
+      }
+      setLoading(false);
+    }
 
-    run();
-  }, [viewingUserId, myId]);
+    run();
+  }, [viewingUserId, myId]);
 
   if (loading) {
     return (
