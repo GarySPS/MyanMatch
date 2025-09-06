@@ -202,13 +202,13 @@ useEffect(() => {
       const verified = !!p?.verified_at || !!p?.is_verified || !!p?.verified;
       const kyc_status = p?.kyc_status || k?.status || null;
 
-      setUserRow({
-        id: myId,
-        username: p?.username || null,
-        kyc_status,
-        verified,
-        avatar_url: avatarUrl
-      });
+setUserRow({
+  id: myId,
+  username: p?.username || null,
+  kyc_status: p?.kyc_status || k?.status || 'none', // Default to 'none' if null
+  verified,
+  avatar_url: avatarUrl
+});
       setLastKyc(k);
 
       if (k && k.status === "denied") {
