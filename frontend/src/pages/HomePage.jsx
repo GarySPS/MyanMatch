@@ -745,20 +745,15 @@ const myId = (() => {
         return;
       }
 
+      // Fetch current user's profile and preferences
       const { data: me } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", myId)
         .maybeSingle();
       
-      const planStr = (me?.membership_plan || (me?.is_plus ? "plus" : "free")).toLowerCase();
+      const planStr = (me?.membership_plan || "free").toLowerCase();
       setPlan(planStr);
-
-      const myAge =
-        typeof me?.age === "number" ? me.age : calcAgeFromBirthdate(me?.birthdate);
-
-      const myCoordProbe = getCoord(me || {});
-      const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng } : null;
 
       const { data: prefsRow } = await supabase
         .from("preferences")
@@ -766,52 +761,38 @@ const myId = (() => {
         .eq("user_id", myId)
         .maybeSingle();
 
-      const prefsDefaults = {
-        age_min: 18, age_max: 80, genders: [],
-        distance_km: 100,
-      };
-      const prefs = { ...prefsDefaults, ...(prefsRow || {}) };
+      const prefs = { age_min: 18, age_max: 80, genders: [], distance_km: 100, ...(prefsRow || {}) };
 
-      // [!CRITICAL LOGIC!] Determine which genders to show.
-      // Use "preferences" first, but fall back to the profile's "interested_in".
+      // Determine which genders to show, with fallbacks
       let wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey).filter(Boolean);
       if (wantGenders.length === 0 && me?.interested_in) {
-        // Fallback for straight woman: interested_in might be "man" or ["man"]
         const interested = typeof me.interested_in === 'string' && me.interested_in.startsWith('[')
           ? JSON.parse(me.interested_in)
           : me.interested_in;
-          
         wantGenders = coerceArray(interested).map(normalizeGenderKey).filter(Boolean);
       }
-
-      // If after all checks, it's still empty, show everyone (or decide on a default)
-      if (wantGenders.length === 0) {
-        console.warn("User has no gender preference set. Showing all genders as a fallback.");
-      }
-
-      const { data: passes } = await supabase
-        .from("pass").select("to_user_id").eq("from_user_id", myId);
+      
+      // Get IDs of users already passed or liked
+      const { data: passes } = await supabase.from("pass").select("to_user_id").eq("from_user_id", myId);
       const passedIds = (passes ?? []).map(p => p.to_user_id);
 
-      const { data: likes } = await supabase
-        .from("likes").select("to_user_id").eq("from_user_id", myId);
+      const { data: likes } = await supabase.from("likes").select("to_user_id").eq("from_user_id", myId);
       const likedIds = (likes ?? []).map(l => l.to_user_id);
 
       const excludeIds = Array.from(new Set([myId, ...passedIds, ...likedIds]));
 
+      // Build the query
       let q = supabase
         .from("profiles")
         .select("*")
         .eq('is_bot', false)
-        .not("user_id", "in", `(${excludeIds.map(id => `'${id}'`).join(",")})`);
+        // ✅ THE FIX IS HERE: The .join(",") correctly formats the list for Supabase
+        .not("user_id", "in", `(${excludeIds.join(",")})`);
 
-      // [!THE BUG FIX IS HERE!]
-      // Add the gender filter directly to the Supabase query.
       if (wantGenders.length > 0) {
         q = q.in("gender", wantGenders);
       }
       
-      // Also apply age range filter at the database level
       if (prefs.age_min) q = q.gte('age', prefs.age_min);
       if (prefs.age_max) q = q.lte('age', prefs.age_max);
       
@@ -824,31 +805,28 @@ const myId = (() => {
         return;
       }
 
+      // Client-side filtering for non-database fields
+      const myAge = getAge(me);
+      const myCoordProbe = getCoord(me || {});
+      const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng } : null;
+
       const withDist = (data || []).map((u) => {
         const c = getCoord(u);
         const d = (myCoord && c.ok) ? distanceKm(myCoord.lat, myCoord.lng, c.lat, c.lng) : Infinity;
         return { ...u, _distKm: d };
       });
+      
+      const filtered = withDist.filter((u) => matchesPreferences(u, prefs, myAge));
 
-      // Client-side filtering can remain for more complex, non-database fields
-      const filtered = withDist.filter((u) => {
-        if (!matchesPreferences(u, prefs, myAge)) return false;
-        
-        const distanceLimitKm = 100; // Example, use your actual distance logic
-        if (u._distKm > distanceLimitKm) return false;
-        
-        return true;
-      });
-
-      const sorted = filtered.slice().sort((a, b) => {
-        const aAge = getAge(a);
-        const bAge = getAge(b);
-        const my = Number.isFinite(myAge) ? myAge : 200;
-        const aDelta = Number.isFinite(aAge) ? Math.abs(aAge - my) : Infinity;
-        const bDelta = Number.isFinite(bAge) ? Math.abs(bAge - my) : Infinity;
-        const ageCmp = aDelta - bDelta;
-        if (ageCmp !== 0) return ageCmp;
-        return a._distKm - b._distKm;
+      const sorted = filtered.sort((a, b) => {
+          const aAge = getAge(a);
+          const bAge = getAge(b);
+          const my = Number.isFinite(myAge) ? myAge : 200;
+          const aDelta = Number.isFinite(aAge) ? Math.abs(aAge - my) : Infinity;
+          const bDelta = Number.isFinite(bAge) ? Math.abs(bAge - my) : Infinity;
+          const ageCmp = aDelta - bDelta;
+          if (ageCmp !== 0) return ageCmp;
+          return a._distKm - b._distKm;
       });
 
       setIndex(0);
@@ -864,9 +842,7 @@ const myId = (() => {
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [myId]);
 
   /* ---------- early outs ---------- */

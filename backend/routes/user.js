@@ -5,23 +5,6 @@ const router = express.Router();
 const { requireAdmin } = require('../middleware/auth');
 
 /**
- * [ADMIN] Gets a list of all users for the admin dashboard.
- */
-router.get('/admin/list', requireAdmin, async (req, res) => {
-  const supabase = req.supabase;
-  const { data, error } = await supabase
-    .from('app_users')
-    .select('id, short_id, email, is_admin, created_at')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Admin user list error:', error);
-    return res.status(500).json({ error: error.message });
-  }
-  res.json({ users: data });
-});
-
-/**
  * Gets a single user's main ID by their public short_id.
  */
 router.get('/by-short-id/:short_id', async (req, res) => {

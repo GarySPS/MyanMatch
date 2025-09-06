@@ -1,74 +1,62 @@
-// backend/middleware/auth.js
-
-const { createRemoteJWKSet, jwtVerify } = require('jose');
-const { fetch } = require('undici');
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-if (!SUPABASE_URL) {
-  console.warn('WARN: SUPABASE_URL not set - JWT verification will fail.');
-}
-const JWKS_URL = SUPABASE_URL
-  ? `${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`
-  : null;
-
-let JWKS;
-if (JWKS_URL) {
-  JWKS = createRemoteJWKSet(new URL(JWKS_URL), { fetch });
-}
+//backend/middleware/auth.js
 
 async function verifySupabaseToken(req, res, next) {
-  try {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) {
-      req.auth = null;
-      return next();
-    }
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-    if (!JWKS) {
-      return res.status(500).json({ error: 'JWKS not configured' });
-    }
+    if (!token) {
+      req.auth = null;
+      return next(); // No token provided, continue to the next middleware
+    }
 
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: 'supabase',
-      audience: 'authenticated',
-    });
+    // Use Supabase's built-in function to verify the token and get user data
+    const { data: { user }, error } = await req.supabase.auth.getUser(token);
 
-    req.auth = {
-      user: {
-        id: payload.sub,
-        email: payload.email || null,
-        role: payload.role || 'authenticated',
-      },
-      payload,
-    };
-    return next();
-  } catch (e) {
-    req.auth = null;
-    return next();
-  }
+    if (error) {
+      // This will catch invalid signature, expired token, etc.
+      console.error('Supabase token verification error:', error.message);
+      return res.status(401).json({ error: 'Unauthorized: ' + error.message });
+    }
+
+    req.auth = { user };
+    next();
+
+  } catch (e) {
+    console.error('Critical error in auth middleware:', e);
+    req.auth = null;
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
 
-async function requireAdmin(req, res, next) {
-    if (!req.auth?.user?.id) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    try {
-        const { data, error } = await req.supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('user_id', req.auth.user.id)
-            .single();
 
-        if (error) throw error;
-        if (!data?.is_admin) {
-            return res.status(403).json({ error: 'Forbidden: requires admin privileges' });
-        }
-        next();
-    } catch (e) {
-        console.error('Admin check failed:', e);
-        return res.status(500).json({ error: 'Error checking admin status' });
+/**
+ * Middleware to ensure the verified user is an admin.
+ * Must run AFTER verifySupabaseToken.
+ */
+async function requireAdmin(req, res, next) {
+  if (!req.auth?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { data, error } = await req.supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('user_id', req.auth.user.id)
+      .single();
+
+    if (error) throw error;
+
+    if (!data?.is_admin) {
+      return res.status(403).json({ error: 'Forbidden: requires admin privileges' });
     }
+    
+    // User is an admin, proceed
+    next();
+  } catch (e) {
+    console.error('Admin check failed:', e);
+    return res.status(500).json({ error: 'Error checking admin status' });
+  }
 }
 
 module.exports = { verifySupabaseToken, requireAdmin };

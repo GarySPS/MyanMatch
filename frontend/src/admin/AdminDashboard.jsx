@@ -45,183 +45,158 @@ export default function AdminDashboard() {
     return m;
   }, [profiles]);
 
-  async function handleImpersonate(user) {
-    if (!user || !user.id) {
-      alert("Cannot log in as this user: missing user ID.");
-      return;
-    }
+async function handleImpersonate(user) {
+    if (!user || !user.id) {
+      alert("Cannot log in as this user: missing user ID.");
+      return;
+    }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to log in as ${user.email}? A new tab will open.`
-    );
-    if (!confirmed) {
-      return;
-    }
+    const confirmed = window.confirm(
+      `Are you sure you want to log in as ${user.email}? A new tab will open.`
+    );
+    if (!confirmed) {
+      return;
+    }
 
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('You are not logged in as an admin.');
+
+      // ✅ FIXED: Ask the correct admin endpoint
+      const response = await fetch(`${API_BASE}/api/admin/impersonate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.magic_link) {
+        throw new Error(result.error || 'Failed to get login link from server.');
+      }
+
+      // Open the special link in a new tab, logging you in as the user
+      window.open(result.magic_link, '_blank');
+
+    } catch (err) {
+      console.error("Impersonation failed:", err);
+      alert(`Could not log in as user: ${err.message}`);
+    }
+  }
+
+  async function handleLogout() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('You are not logged in as an admin.');
-
-      // Ask our backend to create the special login link
-      const response = await fetch(`${API_BASE}/api/user/admin/impersonate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ user_id: user.id }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.magic_link) {
-        throw new Error(result.error || 'Failed to get login link from server.');
-      }
-
-      // Open the special link in a new tab, logging you in as the user
-      window.open(result.magic_link, '_blank');
-
-    } catch (err) {
-      console.error("Impersonation failed:", err);
-      alert(`Could not log in as user: ${err.message}`);
+      await supabase.auth.signOut();
+      // Redirect to the main site after logout
+      window.location.href = 'https://www.myanmatch.com';
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Fallback redirect even if signout fails for some reason
+      window.location.href = 'https://www.myanmatch.com';
     }
   }
 
-  async function load() {
-    let authHeaders = {};
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        authHeaders = { 'Authorization': `Bearer ${session.access_token}` };
-      } else {
-        throw new Error('You are not logged in.');
-      }
-    } catch (e) {
-      console.error("Auth session error:", e);
-      alert("Could not get user session. Please log in again.");
-      return; // Stop loading data if no session
-    }
+  function handleChangePassword() {
+    // Assuming you have a route for this page
+    window.location.href = '/account-security';
+  }
 
-    const [depRes, wdRes, profRes, userRes, kycRes] = await Promise.all([
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url"
-        )
-        .eq("type", "deposit")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("wallet_transactions")
-        .select(
-          "id,user_id,amount,status,created_at,note,detail,payment_method"
-        )
-        .eq("type", "withdraw")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
-      // Fetches users from our new, secure backend API
-      (async () => {
-        try {
-          const response = await fetch(`${API_BASE}/api/user/admin/list`, {
-            headers: authHeaders,
-          });
+async function load() {
+    let authHeaders = {};
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeaders = { 'Authorization': `Bearer ${session.access_token}` };
+      } else {
+        throw new Error('You are not logged in.');
+      }
+    } catch (e) {
+      console.error("Auth session error:", e);
+      alert("Could not get user session. Please log in again.");
+      return; // Stop loading data if no session
+    }
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Failed to fetch user list:", response.status, errorText);
-            throw new Error(`Failed to fetch user list`);
-          }
-          const data = await response.json();
-          return { data: data.users || [], error: null };
-        } catch (error) {
-          return { data: [], error };
-        }
-      })(),
-      supabase
-        .from("kyc_requests")
-        .select("*")
-        .order("created_at", { ascending: false }),
-    ]);
+    const [depRes, wdRes, profRes, userRes, kycRes, reportsRes] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select("id,user_id,amount,status,created_at,detail,payment_method,tx_ref,screenshot_url")
+        .eq("type", "deposit")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("wallet_transactions")
+        .select("id,user_id,amount,status,created_at,note,detail,payment_method")
+        .eq("type", "withdraw")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
+      // ✅ FIXED: Fetches users from the correct, secure backend API endpoint
+      fetch(`${API_BASE}/api/admin/users`, { headers: authHeaders }).then(res => res.json()),
+      supabase
+        .from("kyc_requests")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      // ✅ FIXED: Fetches reports from the secure backend API endpoint
+      fetch(`${API_BASE}/api/admin/reports`, { headers: authHeaders }).then(res => res.json())
+    ]);
 
+    // Process Users response
+    const usersData = userRes.users || [];
+    const userError = userRes.error ? { message: userRes.error } : null;
+    setUsers(usersData);
+    
+    // Process Reports response
+    const reportsData = reportsRes.reports || [];
+    const reportError = reportsRes.error ? { message: reportsRes.error } : null;
 
-    const errs = [
-      depRes.error && ["deposits", depRes.error.message],
-      wdRes.error && ["withdraws", wdRes.error.message],
-      profRes.error && ["profiles", profRes.error.message],
-      userRes.error && ["users", userRes.error.message],
-      kycRes.error && ["kyc_requests", kycRes.error.message],
-    ].filter(Boolean);
-    if (errs.length) {
-      console.error("Admin load errors:", errs);
-      alert(
-        "Admin load error: " + errs.map(([t, m]) => `${t}: ${m}`).join(" | ")
-      );
-    }
+    const errs = [
+      depRes.error && ["deposits", depRes.error.message],
+      wdRes.error && ["withdraws", wdRes.error.message],
+      profRes.error && ["profiles", profRes.error.message],
+      userError && ["users", userError.message],
+      kycRes.error && ["kyc_requests", kycRes.error.message],
+      reportError && ["reports", reportError.message],
+    ].filter(Boolean);
 
-    setDeposits(depRes.data || []);
-    setWithdraws(wdRes.data || []);
-    setProfiles((profRes.data || []).filter((p) => p && p.user_id));
-    setUsers(userRes.data || []);
-    setKycReqs(kycRes.data || []);
+    if (errs.length) {
+      console.error("Admin load errors:", errs);
+      alert("Admin load error: " + errs.map(([t, m]) => `${t}: ${m}`).join(" | "));
+    }
 
-    // ---- Reports via backend (uses your session/cookies)
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/reports`, { headers: authHeaders });
+    setDeposits(depRes.data || []);
+    setWithdraws(wdRes.data || []);
+    setProfiles((profRes.data || []).filter((p) => p && p.user_id));
+    setKycReqs(kycRes.data || []);
 
-      let j = { reports: [] };
-      const ct = r.headers.get("content-type") || "";
-      if (ct.includes("application/json")) {
-        j = await r.json();
-      } else {
-        const txt = await r.text();
-        console.warn("Non-JSON from /api/admin/reports:", txt.slice(0, 200));
-      }
+    // Group reports by user
+    const byUser = new Map();
+    for (const x of reportsData) {
+      const arr = byUser.get(x.reported_user_id) || [];
+      arr.push(x);
+      byUser.set(x.reported_user_id, arr);
+    }
 
-      const rep = Array.isArray(j?.reports) ? j.reports : [];
+    const rows = [];
+    for (const [reportedId, arr] of byUser.entries()) {
+      const u = usersData.find((uu) => uu.id === reportedId) || {};
+      const p = (profRes.data || []).find((pp) => pp.user_id === reportedId) || {};
+      rows.push({
+        user_id: reportedId,
+        username: u.username || u.short_id || String(reportedId || "").slice(0, 8),
+        email: u.email || "",
+        count: arr.length,
+        reasons: arr.map((a) => a.reason).filter(Boolean),
+        latestAt: arr.map((a) => a.created_at).sort().slice(-1)[0] || null,
+        is_blocked: !!p.blocked,
+      });
+    }
 
-      // group by reported_user_id
-      const byUser = new Map();
-      for (const x of rep) {
-        const arr = byUser.get(x.reported_user_id) || [];
-        arr.push(x);
-        byUser.set(x.reported_user_id, arr);
-      }
-
-      const localUsers = userRes.data || [];
-      const localProfiles = profRes.data || [];
-
-      const rows = [];
-      for (const [reportedId, arr] of byUser.entries()) {
-        const u = localUsers.find((uu) => uu.id === reportedId) || {};
-        const p = localProfiles.find((pp) => pp.user_id === reportedId) || {};
-        rows.push({
-          user_id: reportedId,
-          username:
-            u.username || u.short_id || String(reportedId || "").slice(0, 8),
-          email: u.email || "",
-          //password: u.password || "",
-          count: arr.length,
-          reasons: arr.map((a) => a.reason).filter(Boolean),
-          latestAt: arr.map((a) => a.created_at).sort().slice(-1)[0] || null,
-          is_blocked: !!p.blocked,
-        });
-      }
-
-      setReportsL1(
-        rows
-          .filter((r) => r.count >= 1 && r.count <= 2)
-          .sort((a, b) => b.count - a.count)
-      );
-      setReportsL2(
-        rows.filter((r) => r.count >= 3).sort((a, b) => b.count - a.count)
-      );
-    } catch (e) {
-      console.error("fetch /api/admin/reports failed", e);
-      setReportsL1([]);
-      setReportsL2([]);
-    }
-  } // end load()
+    setReportsL1(rows.filter((r) => r.count >= 1 && r.count <= 2).sort((a, b) => b.count - a.count));
+    setReportsL2(rows.filter((r) => r.count >= 3).sort((a, b) => b.count - a.count));
+ }
 
   useEffect(() => {
     load();
@@ -396,31 +371,41 @@ export default function AdminDashboard() {
     }
   }
 
-  return (
-    <div
-      className="relative z-10 max-w-6xl mx-auto p-4 text-sm text-white"
-      style={{ background: "linear-gradient(180deg,#7d0f2c,#47112d)" }}
-    >
-      <h1 className="text-xl font-bold mb-3">MyanMatch Admin</h1>
-
-      <div className="flex gap-2 mb-4">
-        {["users", "deposits", "withdraws", "kyc", "reports1", "reports2"].map(
-          (k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`px-3 py-2 rounded ${
-                tab === k ? "bg-black text-white" : "bg-neutral-200 text-black"
-              }`}
-            >
-              {k.toUpperCase()}
+  return (
+    <div
+      className="relative z-10 max-w-6xl mx-auto p-4 text-sm text-white"
+      style={{ background: "linear-gradient(180deg,#7d0f2c,#47112d)" }}
+    >
+      <div className="flex items-center mb-3">
+        <h1 className="text-xl font-bold">MyanMatch Admin</h1>
+        <div className="ml-auto flex gap-2">
+            <button onClick={handleChangePassword} className="px-3 py-2 rounded bg-sky-600 hover:bg-sky-700 text-xs">
+                Change Password
             </button>
-          )
-        )}
-        <button onClick={load} className="ml-auto px-3 py-2 rounded bg-neutral-700">
-          Refresh
-        </button>
+            <button onClick={handleLogout} className="px-3 py-2 rounded bg-red-600 hover:bg-red-700 text-xs">
+                Log Out
+            </button>
+        </div>
       </div>
+
+      <div className="flex gap-2 mb-4">
+        {["users", "deposits", "withdraws", "kyc", "reports1", "reports2"].map(
+          (k) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`px-3 py-2 rounded ${
+                tab === k ? "bg-black text-white" : "bg-neutral-200 text-black"
+              }`}
+            >
+              {k.toUpperCase()}
+            </button>
+          )
+        )}
+        <button onClick={load} className="ml-auto px-3 py-2 rounded bg-neutral-700">
+          Refresh
+        </button>
+      </div>
 
       {/* USERS */}
       {tab === "users" && (
