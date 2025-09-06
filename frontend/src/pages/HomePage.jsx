@@ -13,6 +13,7 @@ import PhotoLikeModal from "../components/PhotoLikeModal";
 import { canSwapToday, logSwap } from "../lib/swaps";
 import { useI18n } from "../i18n";
 
+const API_BASE = import.meta.env.VITE_API_URL || "";
 // put this just after renderValue(...)
 function calcAgeFromBirthdate(birthdate) {
   if (!birthdate) return null;
@@ -576,18 +577,16 @@ function ReportModal({ open, onClose, reporterId, reportedUserId, onSubmitted, o
     if (!reason || !reporterId || !reportedUserId || submitting) return;
     setSubmitting(true);
     try {
-      const uid = reporterId;
-      if (!uid) {
-        onError?.(t("report.err.login"));
-        setSubmitting(false);
-        return;
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error(t("report.err.login"));
       }
 
-      const resp = await fetch("/api/report", {
+      const resp = await fetch(`${API_BASE}/api/report`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Id": uid,
+          "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           reported_user_id: reportedUserId,
@@ -596,16 +595,18 @@ function ReportModal({ open, onClose, reporterId, reportedUserId, onSubmitted, o
         }),
       });
 
-      const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.ok) throw new Error(json?.error || "failed");
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => ({}));
+        throw new Error(json?.error || `Request failed with status ${resp.status}`);
+      }
 
       onSubmitted?.();
       onClose?.();
       setReason("");
       setDetails("");
     } catch (e) {
-      console.error(e);
-      onError?.(t("report.err.generic"));
+      console.error("Report submission failed:", e);
+      onError?.(e.message || t("report.err.generic"));
     } finally {
       setSubmitting(false);
     }

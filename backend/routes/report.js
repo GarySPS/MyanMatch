@@ -1,15 +1,15 @@
 // backend/routes/report.js
+
 const express = require('express');
 const router = express.Router();
 
-
-// use req.supabase and req.auth (from middleware/auth.js)
 /* -------------------- PUBLIC (end-user) -------------------- */
 /** POST /api/report { reported_user_id, reason, details? } */
- router.post('/report', async (req, res) => {
-      if (!req.auth?.user?.id) return res.status(401).json({ error: 'unauthorized' });
-    const supabase = req.supabase;
-    const reporterId = req.auth.user.id;
+// [!REPLACED!]
+router.post('/', async (req, res) => {
+  if (!req.auth?.user?.id) return res.status(401).json({ error: 'unauthorized' });
+  const supabase = req.supabase;
+  const reporterId = req.auth.user.id;
   try {
     const { reported_user_id, reason, details } = req.body || {};
     if (!reported_user_id || !reason) {
@@ -33,6 +33,7 @@ const router = express.Router();
     res.status(500).json({ error: 'failed_to_create_report' });
   }
 });
+
 
 /* -------------------- ADMIN (dashboard) -------------------- */
 /** GET /api/admin/reports -> { reports: [...] } */
