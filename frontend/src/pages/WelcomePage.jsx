@@ -1,7 +1,19 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "../supabaseClient"; 
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+
+    useEffect(() => {
+    const clearSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.auth.signOut();
+      }
+    };
+    clearSession();
+  }, []);
 
   return (
     <div
