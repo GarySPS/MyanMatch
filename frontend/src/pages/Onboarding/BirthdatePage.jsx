@@ -77,31 +77,31 @@ export default function BirthdatePage() {
       <div className="bg-white rounded-3xl shadow-lg max-w-md w-full p-8 relative z-20">
 
         {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center">
-            <div className="bg-white rounded-2xl p-7 w-11/12 max-w-md mx-auto shadow-xl z-40">
-              <h2 className="text-2xl font-bold mb-2">{t("dob.confirmTitle")}</h2>
-              <div className="mb-4 mt-1 text-lg">{t("dob.age", { age })}</div>
-              <div className="mb-5 text-gray-600">
-                {t("dob.born", { date: displayDate })}
-              </div>
-              <div className="flex border-t pt-4">
-                <button
-                  className="flex-1 py-2 text-gray-700 font-medium"
-                  onClick={() => setShowModal(false)}
-                >
-                  {t("dob.edit")}
-                </button>
-                <button
-                  className="flex-1 py-2 text-[#6e2263] font-semibold"
-                  onClick={handleConfirm}
-                >
-                  {t("dob.confirm")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-7 w-11/12 max-w-md mx-auto shadow-xl z-40 text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">{t("dob.confirmTitle")}</h2>
+              <div className="text-7xl font-extrabold text-gray-900 my-4 tracking-tight">{age}</div>
+              <div className="mb-6 text-gray-500">
+                {t("dob.born", { date: displayDate })}
+              </div>
+              <div className="flex border-t pt-4">
+                <button
+                  className="flex-1 py-2 text-gray-700 font-medium"
+                  onClick={() => setShowModal(false)}
+                >
+                  {t("dob.edit")}
+                </button>
+                <button
+                  className="flex-1 py-2 text-[#6e2263] font-semibold"
+                  onClick={handleConfirm}
+                >
+                  {t("dob.confirm")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Dots + Lock Icon */}
         <div className="flex items-center justify-center mb-7">
