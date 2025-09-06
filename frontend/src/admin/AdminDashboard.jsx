@@ -3,10 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-// [!REPLACED!] - Smart API_BASE that works in both development and production
-const API_BASE = import.meta.env.PROD 
-  ? "https://myanmatch-api.onrender.com" 
-  : "";
+const API_BASE = import.meta.env.VITE_API_URL || ""; 
 
 const kycUrl = (path) => {
   if (!path) return "";
