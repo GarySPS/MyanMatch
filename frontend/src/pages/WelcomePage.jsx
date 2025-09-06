@@ -14,9 +14,6 @@ export default function WelcomePage() {
       <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
 
       {/* Decorative Elements */}
-      <img src="/images/heart-curve-topleft.png" alt="" className="absolute top-0 left-0 w-32 opacity-90 pointer-events-none select-none z-10" draggable={false} />
-      <img src="/images/heart-curve-bottomright.png" alt="" className="absolute bottom-0 right-0 w-40 opacity-90 pointer-events-none select-none z-10" draggable={false} />
-
       <div className="relative z-20 flex flex-col items-center justify-center flex-grow w-full">
         <img
           src="/images/myanmatch-logo.png"
