@@ -196,62 +196,113 @@ function apiUrl(path = "") {
   return `${base}/${p}`;
 }
 
-
 const handleFinish = async () => {
-  setSaving(true);
-  setError("");
-  setSuccess(false);
+  setSaving(true);
+  setError("");
+  setSuccess(false);
 
-  const { data: { user, session }, error: authErr } = await supabase.auth.getSession();
-  if (authErr || !user?.id || !session) {
-    setError("You must be logged in to save your profile.");
-    setSaving(false);
-    return;
-  }
-  const uid = user.id;
+  const { data: { user, session }, error: authErr } = await supabase.auth.getSession();
+  if (authErr || !user?.id || !session) {
+    setError("You must be logged in to save your profile.");
+    setSaving(false);
+    return;
+  }
+  const uid = user.id;
 
-  const payload = buildPayload(profileData || {});
-  payload.user_id = uid;
+  const payload = buildPayload(profileData || {});
+  payload.user_id = uid;
 
-  // Voice Prompt handling can remain as it is
-  // ...
+  // Voice Prompt handling (your existing logic is fine here)
+  try {
+    const vp = profileData?.voicePrompt;
+    let voicePromptJSON = undefined;
+    if (vp?.file) {
+      const fd = new FormData();
+      fd.append("user_id", user.id);
+      fd.append("prompt", vp.prompt || "");
+      fd.append("duration", vp.duration ?? "");
+      fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
+      const url = apiUrl("voice/onboarding/voice");
+      const res = await fetch(url, { method: "POST", body: fd });
+      if (!res.ok) {
+        console.error("voice upload failed:", await res.text());
+        voicePromptJSON = null;
+      } else {
+        const data = await res.json();
+        voicePromptJSON = {
+          prompt: data.prompt || vp.prompt || null,
+          url: data.url || null,
+          path: data.path || null,
+          bucket: data.bucket || "onboarding",
+          duration: data.duration ?? vp.duration ?? null,
+          mime: data.mime || baseMime(vp.file.type),
+        };
+      }
+    } else if (vp?.url) {
+      voicePromptJSON = { prompt: vp.prompt, url: vp.url, duration: vp.duration ?? null };
+    } else if (vp === null) {
+      voicePromptJSON = null;
+    }
+    if (voicePromptJSON !== undefined) {
+      payload.voicePrompt = voicePromptJSON;
+    }
+  } catch (e) {
+    console.warn("voice prompt mapping failed:", e);
+  }
 
-  // Upsert the final profile
-  const { error: dbErr } = await supabase
-    .from("profiles")
-    .upsert(payload, { onConflict: "user_id" });
+  const { error: dbErr } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "user_id" });
 
-  if (dbErr) {
-    console.error(dbErr);
-    setError("Failed to save your profile: " + dbErr.message);
-    setSaving(false);
-    return;
-  }
-  
-  // [!ADD!] Schedule the welcome likes by calling your backend
-  try {
-    console.log("Onboarding complete, scheduling welcome likes...");
-    // This is a "fire and forget" request. We don't need to wait for it.
-    fetch(`/api/user/schedule-welcome-likes`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-        }
-    });
-  } catch (e) {
-      console.error("Failed to schedule welcome likes:", e);
-      // We don't show an error to the user, as this is a background task.
-  }
+  if (dbErr) {
+    console.error(dbErr);
+    setError("Failed to save your profile: " + dbErr.message);
+    setSaving(false);
+    return;
+  }
 
-  // Your existing profile caching logic is fine
-  // ...
-  
-  setSaving(false);
-  setSuccess(true);
+  // [!FIX!] Correctly fetch the full profile and cache it in localStorage.
+  try {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("user_id, username, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+      .eq("user_id", uid)
+      .single();
 
-  setTimeout(() => {
-    navigate("/HomePage", { replace: true });
-  }, 800);
+    if (fullProfile) {
+      const cache = {
+        id: uid,
+        user_id: uid,
+        username: fullProfile.username || null,
+        first_name: fullProfile.first_name || null,
+        last_name: fullProfile.last_name || null,
+        avatar_url: fullProfile.avatar_url || null,
+        onboarding_complete: !!fullProfile.onboarding_complete,
+        is_admin: !!fullProfile.is_admin,
+      };
+      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+    }
+  } catch (e) {
+    console.error("Failed to cache full profile:", e);
+  }
+
+  // Schedule welcome likes by calling your backend
+  try {
+    console.log("Onboarding complete, scheduling welcome likes...");
+    fetch(`/api/user/schedule-welcome-likes`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+  } catch (e) {
+    console.error("Failed to schedule welcome likes:", e);
+  }
+
+  setSaving(false);
+  setSuccess(true);
+
+  setTimeout(() => {
+    navigate("/HomePage", { replace: true });
+  }, 800);
 };
 
   return (
