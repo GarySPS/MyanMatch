@@ -231,207 +231,205 @@ const newExpiry = isUpgradeToX ? expiresAt : addDaysISO(SUB_DURATION_DAYS);
   }
 }
 
-// REPLACE WITH THIS BLOCK
-  const isExpired = planNorm !== 'free' && expiresAt && new Date(expiresAt).getTime() <= Date.now();
-  
-  const isPlusActive = planNorm === 'plus' && !isExpired;
-  const isXActive = planNorm === 'x' && !isExpired;
-  
-  const canBuyPlus = !isPlusActive && !isXActive;
-  const canBuyX = !isXActive;
-  const showUpgradeBtn = isPlusActive; // This simplifies the upgrade button text logic
+// This block defines the variables needed in the JSX below
+  const isExpired = planNorm !== 'free' && expiresAt && new Date(expiresAt).getTime() <= Date.now();
+  
+  const isPlusActive = planNorm === 'plus' && !isExpired;
+  const isXActive = planNorm === 'x' && !isExpired;
+  
+  const canBuyPlus = !isPlusActive && !isXActive;
+  const canBuyX = !isXActive;
+  const alreadyX = isXActive; // for the note under the PLUS button
+  const showUpgradeBtn = isPlusActive;
 
-  // This is used for displaying the "Expires on..." or "Expired" message
-  const isActivePaid = (planNorm === 'plus' || planNorm === 'x') && !!expiresAt;
+  // This is used for displaying the "Expires on..." or "Expired" message
+  const isActivePaid = (planNorm === 'plus' || planNorm === 'x') && !!expiresAt;
 
-  return (
-    <Layout title={t("pricing.titleWindow")}>
-      {/* Plain layout background (matches Home) */}
-      <div
-        className="min-h-[calc(100vh-80px)] w-full"
-        style={{ background: "transparent", boxShadow: "none" }}
-      >
-        <div className="max-w-5xl mx-auto px-4 py-10" style={{ background: "transparent" }}>
-          {/* Header */}
-          <div className="text-center mb-8">
-            {PROMO_ACTIVE && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#fff6ea] border border-[#e9d9c5] text-[#8a0f1b]">
-                <FaCrown className="opacity-90" />
-                <span className="text-sm font-semibold tracking-wide">{t("pricing.ribbon")}</span>
-              </div>
-            )}
-            <h1 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-              {t("pricing.title")}
-            </h1>
-            <p className="mt-2 text-white/80">
-              {t("pricing.subtitle", { days: SUB_DURATION_DAYS })}{" "}
-              {PROMO_ACTIVE ? t("pricing.subtitlePromo") : ""}
-            </p>
-          </div>
+  return (
+    <Layout title={t("pricing.titleWindow")}>
+      {/* Plain layout background (matches Home) */}
+      <div
+        className="min-h-[calc(100vh-80px)] w-full"
+        style={{ background: "transparent", boxShadow: "none" }}
+      >
+        <div className="max-w-5xl mx-auto px-4 py-10" style={{ background: "transparent" }}>
+          {/* Header */}
+          <div className="text-center mb-8">
+            {PROMO_ACTIVE && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#fff6ea] border border-[#e9d9c5] text-[#8a0f1b]">
+                <FaCrown className="opacity-90" />
+                <span className="text-sm font-semibold tracking-wide">{t("pricing.ribbon")}</span>
+              </div>
+            )}
+            <h1 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+              {t("pricing.title")}
+            </h1>
+            <p className="mt-2 text-white/80">
+              {t("pricing.subtitle", { days: SUB_DURATION_DAYS })}{" "}
+              {PROMO_ACTIVE ? t("pricing.subtitlePromo") : ""}
+            </p>
+          </div>
 
-          {/* Balance card */}
-          <div className="mx-auto mb-8 max-w-xl">
-            <div className="rounded-2xl p-5 bg-[#fff6ea] text-[#8a0f1b] shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-[#e9d9c5]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm uppercase tracking-wider text-[#a47b62]">{t("pricing.currentBalance")}</div>
-                  <div className="text-2xl font-extrabold">{loading ? "…" : fmtCoins(balance)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm uppercase tracking-wider text-[#a47b62]">{t("pricing.currentPlan")}</div>
-                  <div className="text-xl font-bold capitalize">
-                    {loading ? "…" : displayPlan}
-                  </div>
-                </div>
-              </div>
+          {/* Balance card */}
+          <div className="mx-auto mb-8 max-w-xl">
+            <div className="rounded-2xl p-5 bg-[#fff6ea] text-[#8a0f1b] shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-[#e9d9c5]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm uppercase tracking-wider text-[#a47b62]">{t("pricing.currentBalance")}</div>
+                  <div className="text-2xl font-extrabold">{loading ? "…" : fmtCoins(balance)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm uppercase tracking-wider text-[#a47b62]">{t("pricing.currentPlan")}</div>
+                  <div className="text-xl font-bold capitalize">
+                    {loading ? "…" : displayPlan}
+                  </div>
+                </div>
+              </div>
+                
+                  {/* [!FIX!] The variable 'isExpired' is now defined above */}
+              {isActivePaid && !isExpired && (
+                <div className="mt-3 text-sm">
+                  <span className="text-[#a47b62]">{t("pricing.expiresOn")}:</span>{" "}
+                  <span className="font-semibold">{fmtDate(expiresAt)}</span>
+                </div>
+              )}
+              {isExpired && (
+                <div className="mt-3 text-sm text-[#a5101d] font-semibold">
+                  {t("pricing.expired")}
+                </div>
+              )}
 
-              {isActivePaid && !expired && (
-                <div className="mt-3 text-sm">
-                  <span className="text-[#a47b62]">{t("pricing.expiresOn")}:</span>{" "}
-                  <span className="font-semibold">{fmtDate(expiresAt)}</span>
-                </div>
-              )}
-              {expired && (
-                <div className="mt-3 text-sm text-[#a5101d] font-semibold">
-                  {t("pricing.expired")}
-                </div>
-              )}
+              <div className="mt-3 text-xs text-[#a47b62]">
+                {t("pricing.refundNote")}
+              </div>
+            </div>
+          </div>
 
-              <div className="mt-3 text-xs text-[#a47b62]">
-                {t("pricing.refundNote")}
-              </div>
-            </div>
-          </div>
-
-          {/* Plans */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* PLUS */}
-            <div className="relative rounded-2xl bg-[#fff6ea] text-[#531016] border border-[#e9d9c5] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-              {PROMO_ACTIVE && (
-                <div className="absolute -top-3 left-4 bg-[#ffd7de] text-[#a5101d] text-xs font-bold px-3 py-1 rounded-full border border-[#f2b9c1]">
-                  {t("pricing.badge50")}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
+          {/* Plans */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* PLUS */}
+            <div className="relative rounded-2xl bg-[#fff6ea] text-[#531016] border border-[#e9d9c5] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+              {PROMO_ACTIVE && (
+                <div className="absolute -top-3 left-4 bg-[#ffd7de] text-[#a5101d] text-xs font-bold px-3 py-1 rounded-full border border-[#f2b9c1]">
+                  {t("pricing.badge50")}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <FaCrown />
+                <h3 className="text-xl font-extrabold">MyanMatch+</h3>
+              </div>
+              <p className="mt-2 text-sm text-[#8d6b58]">{t("pricing.plusDesc")}</p>
+              <div className="mt-4 flex items-end gap-2">
+                <div className="text-3xl font-extrabold">{fmtCoins(prices.plus)}</div>
+                <div className="text-sm text-[#a47b62]">{t("pricing.perDays", { days: SUB_DURATION_DAYS })}</div>
+                <div className="text-sm text-[#a47b62] line-through">
+                  {fmtCoins(COIN_PRICING.PLUS.normal)}
+                </div>
+              </div>
+              <ul className="mt-5 space-y-2 text-sm">
+                {BENEFITS.PLUS.map((b, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#ffe8d1] border border-[#e9d9c5]">
+                      {b.icon}
+                    </span>
+                    <span>{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
+                  ${
+                    !canBuyPlus || busy
+                      ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
+                      : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
+                  }`}
+                disabled={!canBuyPlus || busy}
+                onClick={() => {
+                  if (!canBuyPlus) {
+                    if (isPlusActive) setMessage(t("pricing.msg.plusAlreadyActive", { date: fmtDate(expiresAt) }));
+                    else if (isXActive) setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
+                    return;
+                  }
+                  purchase("plus");
+                }}
+                type="button"
+              >
                 <FaCrown />
-                <h3 className="text-xl font-extrabold">MyanMatch+</h3>
-              </div>
-              <p className="mt-2 text-sm text-[#8d6b58]">{t("pricing.plusDesc")}</p>
-              <div className="mt-4 flex items-end gap-2">
-                <div className="text-3xl font-extrabold">{fmtCoins(prices.plus)}</div>
-                <div className="text-sm text-[#a47b62]">{t("pricing.perDays", { days: SUB_DURATION_DAYS })}</div>
-                <div className="text-sm text-[#a47b62] line-through">
-                  {fmtCoins(COIN_PRICING.PLUS.normal)}
-                </div>
-              </div>
-              <ul className="mt-5 space-y-2 text-sm">
-                {BENEFITS.PLUS.map((b, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#ffe8d1] border border-[#e9d9c5]">
-                      {b.icon}
-                    </span>
-                    <span>{b.text}</span>
-                  </li>
-                ))}
-              </ul>
-              
-// REPLACE WITH THIS BUTTON
-<button
-  className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
-    ${
-      !canBuyPlus || busy
-        ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
-        : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
-    }`}
-  disabled={!canBuyPlus || busy}
-  onClick={() => {
-    if (!canBuyPlus) {
-      if (isPlusActive) setMessage(t("pricing.msg.plusAlreadyActive", { date: fmtDate(expiresAt) }));
-      else if (isXActive) setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
-      return;
-    }
-    purchase("plus");
-  }}
-  type="button"
->
-  <FaCrown />
-  {planNorm === 'plus' && isExpired
-    ? t("pricing.btn.renewPlus", { price: fmtCoins(prices.plus) })
-    : t("pricing.btn.getPlus", { price: fmtCoins(prices.plus) })}
-</button>
+                {planNorm === 'plus' && isExpired
+                  ? t("pricing.btn.renewPlus", { price: fmtCoins(prices.plus) })
+                  : t("pricing.btn.getPlus", { price: fmtCoins(prices.plus) })}
+              </button>
 
-              {alreadyX && <div className="mt-2 text-xs text-[#8d6b58]">{t("pricing.noteOnX")}</div>}
-            </div>
+              {alreadyX && <div className="mt-2 text-xs text-[#8d6b58]">{t("pricing.noteOnX")}</div>}
+            </div>
 
-            {/* X */}
-            <div className="relative rounded-2xl bg-[#fff6ea] text-[#531016] border border-[#e9d9c5] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
-              {PROMO_ACTIVE && (
-                <div className="absolute -top-3 left-4 bg-[#ffd7de] text-[#a5101d] text-xs font-bold px-3 py-1 rounded-full border border-[#f2b9c1]">
-                  {t("pricing.badge50")}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <FaCrown />
-                <h3 className="text-xl font-extrabold">MyanMatchX</h3>
-              </div>
-              <p className="mt-2 text-sm text-[#8d6b58]">{t("pricing.xDesc")}</p>
+            {/* X */}
+            <div className="relative rounded-2xl bg-[#fff6ea] text-[#531016] border border-[#e9d9c5] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+              {PROMO_ACTIVE && (
+                <div className="absolute -top-3 left-4 bg-[#ffd7de] text-[#a5101d] text-xs font-bold px-3 py-1 rounded-full border border-[#f2b9c1]">
+                  {t("pricing.badge50")}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <FaCrown />
+                <h3 className="text-xl font-extrabold">MyanMatchX</h3>
+              </div>
+              <p className="mt-2 text-sm text-[#8d6b58]">{t("pricing.xDesc")}</p>
 
-              {showUpgradeBtn ? (
-                <div className="mt-4 flex items-end gap-2">
-                  <div className="text-3xl font-extrabold">{fmtCoins(prices.upgrade)}</div>
-                  <div className="text-sm text-[#a47b62]">{t("pricing.upgradeFromPlus")}</div>
-                  <div className="text-sm text-[#a47b62] line-through">
-                    {fmtCoins(COIN_PRICING.UPGRADE_PLUS_TO_X.normal)}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 flex items-end gap-2">
-                  <div className="text-3xl font-extrabold">{fmtCoins(prices.x)}</div>
-                  <div className="text-sm text-[#a47b62]">{t("pricing.perDays", { days: SUB_DURATION_DAYS })}</div>
-                  <div className="text-sm text-[#a47b62] line-through">{fmtCoins(COIN_PRICING.X.normal)}</div>
-                </div>
-              )}
+              {showUpgradeBtn ? (
+                <div className="mt-4 flex items-end gap-2">
+                  <div className="text-3xl font-extrabold">{fmtCoins(prices.upgrade)}</div>
+                  <div className="text-sm text-[#a47b62]">{t("pricing.upgradeFromPlus")}</div>
+                  <div className="text-sm text-[#a47b62] line-through">
+                    {fmtCoins(COIN_PRICING.UPGRADE_PLUS_TO_X.normal)}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-end gap-2">
+                  <div className="text-3xl font-extrabold">{fmtCoins(prices.x)}</div>
+                  <div className="text-sm text-[#a47b62]">{t("pricing.perDays", { days: SUB_DURATION_DAYS })}</div>
+                  <div className="text-sm text-[#a47b62] line-through">{fmtCoins(COIN_PRICING.X.normal)}</div>
+                </div>
+              )}
 
-              <ul className="mt-5 space-y-2 text-sm">
-                {BENEFITS.X.map((b, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#ffe8d1] border border-[#e9d9c5]">
-                      {b.icon}
-                    </span>
-                    <span>{b.text}</span>
-                  </li>
-                ))}
-              </ul>
+              <ul className="mt-5 space-y-2 text-sm">
+                {BENEFITS.X.map((b, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#ffe8d1] border border-[#e9d9c5]">
+                      {b.icon}
+                    </span>
+                    <span>{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
+                  ${
+                    !canBuyX || busy
+                      ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
+                      : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
+                  }`}
+                disabled={!canBuyX || busy}
+                onClick={() => {
+                    if (!canBuyX) {
+                      setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
+                      return;
+                    }
+                    purchase("x");
+                }}
+              >
+                <FaBolt />
+                {planNorm === 'x' && isExpired
+                  ? t("pricing.btn.renewX", { price: fmtCoins(prices.x) })
+                  : showUpgradeBtn
+                  ? t("pricing.btn.upgradeToX", { price: fmtCoins(prices.upgrade) })
+                  : t("pricing.btn.getX", { price: fmtCoins(prices.x) })}
+              </button>
 
-// REPLACE WITH THIS BUTTON
-<button
-  className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold 
-    ${
-      !canBuyX || busy
-        ? "bg-[#e7e1d9] text-[#8d6b58] cursor-not-allowed"
-        : "bg-[#a5101d] text-white hover:opacity-95 active:opacity-90"
-    }`}
-  disabled={!canBuyX || busy}
-  onClick={() => {
-      if (!canBuyX) {
-        setMessage(t("pricing.msg.xAlreadyActive", { date: fmtDate(expiresAt) }));
-        return;
-      }
-      purchase("x");
-  }}
->
-  <FaBolt />
-  {planNorm === 'x' && isExpired
-    ? t("pricing.btn.renewX", { price: fmtCoins(prices.x) })
-    : showUpgradeBtn
-    ? t("pricing.btn.upgradeToX", { price: fmtCoins(prices.upgrade) })
-    : t("pricing.btn.getX", { price: fmtCoins(prices.x) })}
-</button>
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
-  );
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
 }
