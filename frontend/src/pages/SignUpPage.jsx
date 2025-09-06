@@ -51,81 +51,85 @@ export default function SignUpPage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
   
-  // [!REPLACED!] - The entire sign-up function is replaced with the new username logic.
-  async function handleUsernameSignUp(e) {
-    e.preventDefault();
-    setErr("");
+async function handleUsernameSignUp(e) {
+  e.preventDefault();
+  setErr("");
 
-    // 1. Validate inputs for username and password
-    if (!username || username.trim().length < 3) {
-      const m = "Username must be at least 3 characters long.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!password || password.length < 6) {
-      const m = "Password must be at least 6 characters long.";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (password !== confirm) {
-      const m = "Passwords do not match.";
-      setErr(m); showToast(m, "error"); return;
-    }
-
-    setLoading(true);
-
-    // 2. Create a unique, dummy email address from the username.
-    const cleanUsername = username.toLowerCase().trim();
-    const dummyEmail = `${cleanUsername}@myanmatch.user`;
-
-    try {
-      // 3. Sign up the user with Supabase Auth using the dummy email.
-      //    Since "Confirm email" is OFF, this will sign the user in directly.
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: dummyEmail,
-        password: password,
-      });
-
-      if (authError) {
-        throw authError;
-      }
-      if (!authData.user) {
-        throw new Error("Sign up successful, but no user data returned.");
-      }
-      
-      const userId = authData.user.id;
-
-      // 4. Create a corresponding row in your public `profiles` table.
-      //    This is where you store the REAL username.
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: userId,        // Link to the auth.users table
-          username: username,     // Store the actual username here
-          onboarding_complete: false, // Set default value
-        });
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      // 5. SUCCESS! Navigate to the start of the onboarding flow.
-      navigate("/onboarding/terms");
-
-    } catch (error) {
-      console.error("Sign-up failed:", error.message);
-      // Provide a user-friendly error message for duplicate usernames
-      if (error.message.includes("unique constraint") || error.message.includes("User already registered")) {
-        const m = "This username is already taken. Please choose another one.";
-        setErr(m);
-        showToast(m, "error");
-      } else {
-        setErr(error.message);
-        showToast(error.message, "error");
-      }
-    } finally {
-      setLoading(false);
-    }
+  // 1. Validate inputs
+  if (!username || username.trim().length < 3) {
+    const m = "Username must be at least 3 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    const m = "Username can only contain letters, numbers, and underscores.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!password || password.length < 6) {
+    const m = "Password must be at least 6 characters long.";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (password !== confirm) {
+    const m = "Passwords do not match.";
+    setErr(m); showToast(m, "error"); return;
   }
 
+  setLoading(true);
+
+  // 2. Create a unique, dummy email from the username
+  const cleanUsername = username.toLowerCase().trim();
+  const dummyEmail = `${cleanUsername}@myanmatch.user`;
+
+  try {
+    // 3. Sign up the user with Supabase Auth using the dummy email.
+    // Since "Confirm email" is OFF, this signs the user in directly.
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: dummyEmail,
+      password: password,
+    });
+
+    if (authError) {
+      // This will catch if the dummy email (and thus username) is already taken.
+      throw authError;
+    }
+    if (!authData.user) {
+      throw new Error("Sign up successful, but no user data returned.");
+    }
+    
+    const userId = authData.user.id;
+
+    // 4. [!FIX!] UPDATE the existing profile row that the trigger created.
+    // This adds the username to the row.
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        username: username, // Set the actual username
+        onboarding_complete: false,
+      })
+      .eq('user_id', userId); // Match the user that was just created
+
+    if (profileError) {
+      // This might happen if the trigger failed, but it's a fallback.
+      throw profileError;
+    }
+
+    // 5. SUCCESS! Navigate to the start of the onboarding flow.
+    navigate("/onboarding/terms");
+
+  } catch (error) {
+    console.error("Sign-up failed:", error.message);
+    // Provide a user-friendly error message for duplicate usernames
+    if (error.message.includes("unique constraint") || error.message.includes("User already registered")) {
+      const m = "This username is already taken. Please choose another one.";
+      setErr(m);
+      showToast(m, "error");
+    } else {
+      setErr(error.message);
+      showToast(error.message, "error");
+    }
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <div
