@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-// Use Vite dev proxy so we can call /api/* without CORS
-const API_BASE = "";
+// [!REPLACED!] - Smart API_BASE that works in both development and production
+const API_BASE = import.meta.env.PROD 
+  ? "https://myanmatch-api.onrender.com" // <-- IMPORTANT: REPLACE THIS URL
+  : "";
 
 const kycUrl = (path) => {
   if (!path) return "";
@@ -130,9 +132,9 @@ async function load() {
         .select("id,user_id,amount,status,created_at,note,detail,payment_method")
         .eq("type", "withdraw")
         .order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("user_id,coin,coin_hold,is_admin,is_verified,blocked"),
+supabase
+  .from("profiles")
+  .select("user_id, username, coin, coin_hold, is_admin, is_verified, blocked"), // <-- Added username
       // ✅ FIXED: Fetches users from the correct, secure backend API endpoint
       fetch(`${API_BASE}/api/admin/users`, { headers: authHeaders }).then(res => res.json()),
       supabase
@@ -410,42 +412,43 @@ async function load() {
       {/* USERS */}
       {tab === "users" && (
         <Table>
-          <thead>
-            <Row header>
-              <Cell>Short ID</Cell>
-              <Cell>Email</Cell>
-              <Cell>Coin</Cell>
-              <Cell>Hold</Cell>
-              <Cell>Admin</Cell>
-              <Cell>Verified</Cell>
-              <Cell>Joined</Cell>
-              <Cell>Actions</Cell>
-            </Row>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const p = profileIndex.get(u.id); // Find matching profile data
-              return (
-                <Row key={u.id}>
-                  <Cell>{u.short_id || "—"}</Cell>
-                  <Cell>{u.email || ""}</Cell>
-                  <Cell center>{p?.coin ?? "N/A"}</Cell>
-                  <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
-                  <Cell center>{u.is_admin ? "✓" : ""}</Cell>
-                  <Cell center>{p?.is_verified ? "✓" : ""}</Cell>
-                  <Cell>{u.created_at?.slice(0, 10) || ""}</Cell>
-                  <Cell>
-                    <button
-                      onClick={() => handleImpersonate(u)}
-                      className="px-2 py-1 bg-blue-600 rounded text-white hover:bg-blue-700"
-                    >
-                      Log In As User
-                    </button>
-                  </Cell>
-                </Row>
-              );
-            })}
-          </tbody>
+{/* [!MODIFIED!] - Added Username column */}
+<thead>
+  <Row header>
+    <Cell>Username</Cell> {/* <-- ADDED */}
+    <Cell>Email</Cell>
+    <Cell>Coin</Cell>
+    <Cell>Hold</Cell>
+    <Cell>Admin</Cell>
+    <Cell>Verified</Cell>
+    <Cell>Joined</Cell>
+    <Cell>Actions</Cell>
+  </Row>
+</thead>
+<tbody>
+  {users.map((u) => {
+    const p = profileIndex.get(u.id); // Find matching profile data
+    return (
+      <Row key={u.id}>
+        <Cell>{p?.username || u.short_id || "—"}</Cell> {/* <-- MODIFIED to show username */}
+        <Cell>{u.email?.endsWith('@myanmatch.user') ? '(dummy email)' : u.email}</Cell> {/* <-- MODIFIED to hide dummy emails */}
+        <Cell center>{p?.coin ?? "N/A"}</Cell>
+        <Cell center>{p?.coin_hold ?? "N/A"}</Cell>
+        <Cell center>{u.is_admin ? "✓" : ""}</Cell>
+        <Cell center>{p?.is_verified ? "✓" : ""}</Cell>
+        <Cell>{u.created_at?.slice(0, 10) || ""}</Cell>
+        <Cell>
+          <button
+            onClick={() => handleImpersonate(u)}
+            className="px-2 py-1 bg-blue-600 rounded text-white hover:bg-blue-700"
+          >
+            Log In As User
+          </button>
+        </Cell>
+      </Row>
+    );
+  })}
+</tbody>
         </Table>
       )}
 
