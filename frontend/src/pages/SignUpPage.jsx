@@ -84,11 +84,8 @@ async function handleUsernameSignUp(e) {
       throw new Error("Sign up did not return a user or session.");
     }
     
-    // [!FIX!] Manually set and save the session to ensure it persists.
     await supabase.auth.setSession(authData.session);
-    localStorage.setItem("sb_access_token", authData.session.access_token);
-    localStorage.setItem("sb_refresh_token", authData.session.refresh_token);
-
+    
     const userId = authData.user.id;
 
     const { error: profileError } = await supabase
@@ -101,12 +98,14 @@ async function handleUsernameSignUp(e) {
 
     if (profileError) throw profileError;
 
+    // [!FIX!] Added `verified: true` because email confirmation is off.
     const cache = {
       id: userId,
       user_id: userId,
       username: username,
       onboarding_complete: false,
       is_admin: false,
+      verified: true,
     };
     localStorage.setItem("myanmatch_user", JSON.stringify(cache));
 

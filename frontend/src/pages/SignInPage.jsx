@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-// This function is already correct and doesn't need changes.
 async function ensureProfileAndCache() {
   const { data: { user } } = await supabase.auth.getUser();
   const authId = user?.id;
@@ -18,6 +17,7 @@ async function ensureProfileAndCache() {
     .eq("user_id", authId)
     .single();
 
+  // [!FIX!] Added the 'verified' status to the cache object.
   const cache = {
     id: authId,
     user_id: authId,
@@ -27,6 +27,7 @@ async function ensureProfileAndCache() {
     avatar_url: prof?.avatar_url || null,
     onboarding_complete: !!prof?.onboarding_complete,
     is_admin: !!prof?.is_admin,
+    verified: !!user?.email_confirmed_at || !user?.email?.endsWith('@myanmatch.user'),
   };
   localStorage.setItem("myanmatch_user", JSON.stringify(cache));
 

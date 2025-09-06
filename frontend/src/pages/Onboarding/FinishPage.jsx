@@ -203,16 +203,12 @@ const handleFinish = async () => {
 
   let { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-  // [!FIX!] If the session was lost, this logic attempts to recover it.
   if (!session || sessionError) {
     const access_token = localStorage.getItem("sb_access_token");
     const refresh_token = localStorage.getItem("sb_refresh_token");
-
     if (access_token && refresh_token) {
-      const { data: refreshedData, error: refreshError } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (!refreshError && refreshedData) {
-        session = refreshedData.session;
-      }
+      const { data: refreshedData } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (refreshedData) session = refreshedData.session;
     }
   }
 
@@ -223,30 +219,25 @@ const handleFinish = async () => {
     return;
   }
   const uid = user.id;
-
   const payload = buildPayload(profileData || {});
   payload.user_id = uid;
 
   // Voice Prompt handling
   try {
     const vp = profileData?.voicePrompt;
-    let voicePromptJSON = undefined;
     if (vp?.file) {
       const fd = new FormData();
       fd.append("user_id", user.id);
       fd.append("prompt", vp.prompt || "");
       fd.append("duration", vp.duration ?? "");
       fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
-      const url = apiUrl("voice/onboarding/voice");
-      const res = await fetch(url, { method: "POST", body: fd });
-      if (!res.ok) { voicePromptJSON = null; } else {
+      const res = await fetch(apiUrl("voice/onboarding/voice"), { method: "POST", body: fd });
+      if (res.ok) {
         const data = await res.json();
-        voicePromptJSON = { prompt: data.prompt || vp.prompt || null, url: data.url || null, path: data.path || null, bucket: data.bucket || "onboarding", duration: data.duration ?? vp.duration ?? null, mime: data.mime || baseMime(vp.file.type) };
+        payload.voicePrompt = { prompt: data.prompt || vp.prompt || null, url: data.url || null, path: data.path || null, bucket: data.bucket || "onboarding", duration: data.duration ?? vp.duration ?? null, mime: data.mime || baseMime(vp.file.type) };
       }
-    } else if (vp?.url) { voicePromptJSON = { prompt: vp.prompt, url: vp.url, duration: vp.duration ?? null }; }
-    else if (vp === null) { voicePromptJSON = null; }
-    if (voicePromptJSON !== undefined) { payload.voicePrompt = voicePromptJSON; }
-  } catch (e) { console.warn("voice prompt mapping failed:", e); }
+    }
+  } catch (e) { console.warn("Voice prompt mapping failed:", e); }
 
   const { error: dbErr } = await supabase
     .from("profiles")
@@ -276,6 +267,7 @@ const handleFinish = async () => {
         avatar_url: fullProfile.avatar_url || null,
         onboarding_complete: !!fullProfile.onboarding_complete,
         is_admin: !!fullProfile.is_admin,
+        verified: true,
       };
       localStorage.setItem("myanmatch_user", JSON.stringify(cache));
     }
