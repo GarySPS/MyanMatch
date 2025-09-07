@@ -17,13 +17,13 @@ export default function WelcomePage() {
 
       {/* Decorative Elements */}
       <div className="relative z-20 flex flex-col items-center justify-center flex-grow w-full">
-        <img
-          src="/images/myanmatch-logo.png"
-          alt="MyanMatch"
-          // [!MODIFIED!] Increased logo size for better visibility
-          className="w-64 h-64 md:w-72 md:h-72 mb-4 shadow-xl rounded-full object-cover"
-          draggable={false}
-        />
+<img
+  src="/images/myanmatch-logo.png"
+  alt="MyanMatch"
+  // [!MODIFIED!] Further increased logo size
+  className="w-72 h-72 md:w-80 md:h-80 mb-4 shadow-xl rounded-full object-cover"
+  draggable={false}
+/>
         
         <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg text-center tracking-wide">
           MyanMatch
