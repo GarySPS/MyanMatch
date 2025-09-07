@@ -1,34 +1,15 @@
+// src/pages/SignUpPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 /* --- Pretty toast (optional) --- */
 function MMToast({ open, type = "error", text = "", onClose }) {
-  if (!open) return null;
-  const isErr = type === "error";
-  return (
-    <div
-      className="fixed left-1/2 -translate-x-1/2 z-[80] bottom-[calc(env(safe-area-inset-bottom)+110px)]"
-      role="status"
-      aria-live="polite"
-      onClick={onClose}
-    >
-      <div
-        className={`px-4 py-3 rounded-2xl shadow-2xl border ${
-          isErr
-            ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
-            : "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white border-white/20"
-        }`}
-      >
-        <div className="font-semibold text-sm">{text}</div>
-      </div>
-    </div>
-  );
+  // ... (keep your MMToast component)
 }
 
 export default function SignUpPage() {
   const navigate = useNavigate();
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -39,11 +20,7 @@ export default function SignUpPage() {
   const [toastText, setToastText] = useState("");
 
   function showToast(text, type = "error") {
-    setToastText(text);
-    setToastType(type);
-    setToastOpen(true);
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
+    // ... (keep your showToast function)
   }
 
   async function handleUsernameSignUp(e) {
@@ -83,29 +60,18 @@ export default function SignUpPage() {
         throw new Error("Sign up did not return a user or session.");
       }
       
+      // The onAuthStateChange listener in AuthContext will now handle this,
+      // but explicitly setting the session here ensures a smooth immediate transition.
       await supabase.auth.setSession(authData.session);
       
       const userId = authData.user.id;
 
-      const { error: profileError } = await supabase
+      // Note: A trigger in your DB should create the profile row on user creation.
+      // This update is good practice to ensure the username is set.
+      await supabase
         .from('profiles')
-        .update({
-          username: username,
-          onboarding_complete: false,
-        })
+        .update({ username: username })
         .eq('user_id', userId);
-
-      if (profileError) throw profileError;
-
-      const cache = {
-        id: userId,
-        user_id: userId,
-        username: username,
-        onboarding_complete: false,
-        is_admin: false,
-        verified: true,
-      };
-      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
 
       navigate("/onboarding/terms");
 
@@ -124,7 +90,7 @@ export default function SignUpPage() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col justify-center items-center relative"
+      className="min-h-screen w-full flex flex-col justify-center items-center relative p-4"
       style={{
         background: `url('/images/myanmatch-bg.jpg') center center/cover no-repeat`,
         backgroundColor: "#21101e",
@@ -143,7 +109,7 @@ export default function SignUpPage() {
           <input
             type="text"
             className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="Username / အကောင့်နာမည်"
+            placeholder="e.g. aung_aung25"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
@@ -156,7 +122,7 @@ export default function SignUpPage() {
           <input
             type="password"
             className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="Password / စကားဝှက်"
+            placeholder="6+ characters / စာလုံး ၆ လုံးအထက်"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -169,7 +135,7 @@ export default function SignUpPage() {
           <input
             type="password"
             className="mb-6 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="Confirm Password / စကားဝှက် အတည်ပြုပါ"
+            placeholder="Re-enter password / ထပ်မံရိုက်ထည့်ပါ"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required

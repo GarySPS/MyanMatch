@@ -1,45 +1,30 @@
-//src/ProtectedRoute.jsx
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { supabase } from "./supabaseClient";
+// The new, corrected ProtectedRoute.jsx
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const [loading, setLoading] = useState(true);
-  const [allow, setAllow] = useState(false);
-  const [redirect, setRedirect] = useState(null);
+  // 1. Get live auth state from our context
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
 
-  useEffect(() => {
-    async function check() {
-      const user = JSON.parse(localStorage.getItem("myanmatch_user") || "null");
-      if (!user || !user.id) {
-        setRedirect("/SignInPage");
-        setLoading(false);
-        return;
-      }
-      if (!user.verified) {
-        setRedirect("/VerifyCodePage");
-        setLoading(false);
-        return;
-      }
-      // Always check onboarding_complete from profiles table
-      const userId = user.id;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("onboarding_complete")
-        .eq("user_id", userId)
-        .single();
-      if (error || !data || !data.onboarding_complete) {
-        setRedirect("/onboarding/terms");
-        setLoading(false);
-        return;
-      }
-      setAllow(true);
-      setLoading(false);
-    }
-    check();
-  }, []);
+  // 2. While the context is loading the session, show nothing.
+  // This prevents a flicker from a protected page to the login page.
+  if (loading) {
+    return null; // Or a loading spinner component
+  }
 
-  if (loading) return null;
-  if (redirect) return <Navigate to={redirect} replace />;
+  // 3. If loading is done and there's no user, redirect to sign-in.
+  // We save the page they were trying to visit so we can send them back after login.
+  if (!user) {
+    return <Navigate to="/SignInPage" state={{ from: location }} replace />;
+  }
+  
+  // 4. If the user is logged in but hasn't finished onboarding, send them to the start of that flow.
+  // The 'profile' object also comes from our context.
+  if (profile && !profile.onboarding_complete) {
+    return <Navigate to="/onboarding/terms" replace />;
+  }
+
+  // 5. If all checks pass, render the protected page.
   return children;
 }

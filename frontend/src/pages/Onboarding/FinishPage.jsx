@@ -3,10 +3,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useOnboarding } from "../../context/OnboardingContext";
+import { useAuth } from "../../context/AuthContext";
 
 export default function FinishPage() {
   const navigate = useNavigate();
   const { profileData } = useOnboarding();
+  const { session, user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -197,93 +199,95 @@ function apiUrl(path = "") {
 }
 
 const handleFinish = async () => {
-  setSaving(true);
-  setError("");
-  setSuccess(false);
+  setSaving(true);
+  setError("");
+  setSuccess(false);
 
-  let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  // [!FIX!] This is the key change. We no longer manually get the session.
+  // We now use the 'user' and 'session' from the useAuth() hook directly.
+  if (!user?.id || !session) {
+    setError("Authentication error. Please log in again.");
+    setSaving(false);
+    return;
+  }
+  
+  const uid = user.id;
+  const payload = buildPayload(profileData || {});
+  payload.user_id = uid;
 
-  if (!session || sessionError) {
-    const access_token = localStorage.getItem("sb_access_token");
-    const refresh_token = localStorage.getItem("sb_refresh_token");
-    if (access_token && refresh_token) {
-      const { data: refreshedData } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (refreshedData) session = refreshedData.session;
-    }
-  }
+  // Voice Prompt handling (this logic can stay, but now uses the reliable session token)
+  try {
+    const vp = profileData?.voicePrompt;
+    if (vp?.file) {
+      const fd = new FormData();
+      fd.append("user_id", user.id);
+      fd.append("prompt", vp.prompt || "");
+      fd.append("duration", vp.duration ?? "");
+      fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
+      
+      const res = await fetch(apiUrl("voice/onboarding/voice"), { 
+        method: "POST", 
+        headers: {
+            // Add authorization header for your custom API
+            'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: fd 
+      });
 
-  const user = session?.user;
-  if (!user?.id) {
-    setError("You must be logged in to save your profile.");
-    setSaving(false);
-    return;
-  }
-  const uid = user.id;
-  const payload = buildPayload(profileData || {});
-  payload.user_id = uid;
+      if (res.ok) {
+        const data = await res.json();
+        payload.voicePrompt = { prompt: data.prompt || vp.prompt || null, url: data.url || null, path: data.path || null, bucket: data.bucket || "onboarding", duration: data.duration ?? vp.duration ?? null, mime: data.mime || baseMime(vp.file.type) };
+      }
+    }
+  } catch (e) { console.warn("Voice prompt mapping failed:", e); }
 
-  // Voice Prompt handling
-  try {
-    const vp = profileData?.voicePrompt;
-    if (vp?.file) {
-      const fd = new FormData();
-      fd.append("user_id", user.id);
-      fd.append("prompt", vp.prompt || "");
-      fd.append("duration", vp.duration ?? "");
-      fd.append("file", vp.file, `voice.${safeAudioExt(vp.file.type)}`);
-      const res = await fetch(apiUrl("voice/onboarding/voice"), { method: "POST", body: fd });
-      if (res.ok) {
-        const data = await res.json();
-        payload.voicePrompt = { prompt: data.prompt || vp.prompt || null, url: data.url || null, path: data.path || null, bucket: data.bucket || "onboarding", duration: data.duration ?? vp.duration ?? null, mime: data.mime || baseMime(vp.file.type) };
-      }
-    }
-  } catch (e) { console.warn("Voice prompt mapping failed:", e); }
+  const { error: dbErr } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "user_id" });
 
-  const { error: dbErr } = await supabase
-    .from("profiles")
-    .upsert(payload, { onConflict: "user_id" });
+  if (dbErr) {
+    console.error(dbErr);
+    setError("Failed to save your profile: " + dbErr.message);
+    setSaving(false);
+    return;
+  }
 
-  if (dbErr) {
-    console.error(dbErr);
-    setError("Failed to save your profile: " + dbErr.message);
-    setSaving(false);
-    return;
-  }
+  // Final cache update before navigating
+  try {
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("user_id, username, first_name, last_name, avatar_url, onboarding_complete, is_admin")
+      .eq("user_id", uid)
+      .single();
 
-  try {
-    const { data: fullProfile } = await supabase
-      .from("profiles")
-      .select("user_id, username, first_name, last_name, avatar_url, onboarding_complete, is_admin")
-      .eq("user_id", uid)
-      .single();
+    if (fullProfile) {
+      const cache = {
+        id: uid,
+        user_id: uid,
+        username: fullProfile.username || null,
+        first_name: fullProfile.first_name || null,
+        last_name: fullProfile.last_name || null,
+        avatar_url: fullProfile.avatar_url || null,
+        onboarding_complete: !!fullProfile.onboarding_complete,
+        is_admin: !!fullProfile.is_admin,
+        verified: !!user.email_confirmed_at || !user.email.endsWith('@myanmatch.user'),
+      };
+      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+    }
+  } catch (e) { console.error("Failed to cache full profile:", e); }
 
-    if (fullProfile) {
-      const cache = {
-        id: uid,
-        user_id: uid,
-        username: fullProfile.username || null,
-        first_name: fullProfile.first_name || null,
-        last_name: fullProfile.last_name || null,
-        avatar_url: fullProfile.avatar_url || null,
-        onboarding_complete: !!fullProfile.onboarding_complete,
-        is_admin: !!fullProfile.is_admin,
-        verified: true,
-      };
-      localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-    }
-  } catch (e) { console.error("Failed to cache full profile:", e); }
+  // Schedule welcome likes
+  try {
+    fetch(`/api/user/schedule-welcome-likes`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+  } catch (e) { console.error("Failed to schedule welcome likes:", e); }
 
-  try {
-    fetch(`/api/user/schedule-welcome-likes`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
-    });
-  } catch (e) { console.error("Failed to schedule welcome likes:", e); }
+  setSaving(false);
+  setSuccess(true);
 
-  setSaving(false);
-  setSuccess(true);
-
-  setTimeout(() => { navigate("/HomePage", { replace: true }); }, 800);
+  setTimeout(() => { navigate("/HomePage", { replace: true }); }, 800);
 };
 
   return (
