@@ -1,9 +1,10 @@
 // src/pages/MatchesPage.jsx
-import { useEffect, useState, useCallback } from "react";
+
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useI18n } from "../i18n";
-import { useAuth } from "../context/AuthContext"; // 1. Import the Auth Context
+import { useAuth } from "../context/AuthContext";
 
 function normalizePlan(p) {
   const s = String(p || "").toLowerCase().trim();
@@ -12,7 +13,7 @@ function normalizePlan(p) {
   return "free";
 }
 
-export default function MatchesPage() { // Corrected component name
+export default function MatchesPage() {
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -20,12 +21,13 @@ export default function MatchesPage() { // Corrected component name
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  // 2. Use our reliable Auth Context instead of localStorage
+  // 1. Get user data and the silent refresh function from our context
   const { user, profile, silentRefreshProfile } = useAuth();
   
-  // 3. A state to trigger re-fetching when the tab is focused
+  // 2. This state will trigger a refresh when the tab is focused
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // 3. Determine premium status from the live profile data
   const isPremium = useMemo(() => {
     if (!profile) return false;
     const plan = normalizePlan(profile.membership_plan);
@@ -34,17 +36,15 @@ export default function MatchesPage() { // Corrected component name
   }, [profile]);
 
 
-  // 4. All data fetching logic is now inside a useCallback hook
+  // 4. All data-fetching logic is now wrapped in a useCallback hook
   const fetchLikes = useCallback(async () => {
-    if (!user) return; // Guard against running without a user
+    if (!user) return;
     setLoading(true);
-
-    const userId = user.id;
 
     const { data: incoming, error: inErr } = await supabase
       .from("likes")
       .select("id,from_user_id,created_at,type,comment,is_visible")
-      .eq("to_user_id", userId)
+      .eq("to_user_id", user.id)
       .eq("is_visible", true)
       .order("created_at", { ascending: false });
 
@@ -60,10 +60,10 @@ export default function MatchesPage() { // Corrected component name
     const { data: outgoingToThem } = await supabase
       .from("likes")
       .select("to_user_id")
-      .eq("from_user_id", userId)
+      .eq("from_user_id", user.id)
       .in("to_user_id", fromIds)
       .eq("is_visible", true);
-
+      
     const matchedIds = new Set((outgoingToThem || []).map((r) => r.to_user_id));
     const filteredIncoming = incoming.filter((l) => !matchedIds.has(l.from_user_id));
 
@@ -86,9 +86,9 @@ export default function MatchesPage() { // Corrected component name
       setLoading(false);
       return;
     }
-
+    
     const rows = filteredIncoming.map((l) => {
-      const p = profs.find((x) => x.user_id === l.from_user_id);
+      const p = profs?.find((x) => x.user_id === l.from_user_id);
       const type = (l.type || "like").toLowerCase();
       return {
         like_id: l.id,
@@ -106,15 +106,13 @@ export default function MatchesPage() { // Corrected component name
     setLikes(rows);
     setShowOnboarding(rows.length === 0);
     setLoading(false);
-  }, [user]); // This function depends on the user object
+  }, [user]);
 
-  // 5. This new effect handles refreshing data when you return to the tab
+  // 5. This new effect handles refreshing when you return to the tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Silently update profile info (like premium status) without a full loading screen
         silentRefreshProfile();
-        // Trigger a refetch of the likes
         setRefreshTrigger(t => t + 1);
       }
     };
@@ -124,14 +122,14 @@ export default function MatchesPage() { // Corrected component name
     };
   }, [silentRefreshProfile]);
 
-  // 6. This is the main data-fetching effect. It now re-runs when needed.
+  // 6. This main effect now re-runs when the user changes or the tab is focused
   useEffect(() => {
     if (user) {
       fetchLikes();
-    } else {
+    } else if (!user) {
       setLoading(false);
     }
-  }, [user, fetchLikes, refreshTrigger]); // Re-runs when the user logs in or the tab is focused
+  }, [user, fetchLikes, refreshTrigger]);
 
   const isEmpty = !likes.length && !loading;
 
@@ -159,12 +157,10 @@ export default function MatchesPage() { // Corrected component name
     if (!u?.id) return;
     navigate(`/profile/${u.id}`);
   }
-  
-  // --- The rest of your JSX remains the same ---
-  // --- It will now correctly receive updated data ---
+
+  // --- All of your JSX below here remains the same ---
   return (
     <div className="relative min-h-[calc(100vh-80px)] w-full text-white overflow-hidden">
-      {/* ... keep all your existing JSX from here down ... */}
       {/* FULL-PAGE BACKGROUND (override Layout background) */}
       <div className="fixed inset-0 z-[1] pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-[#201033] via-[#120f1f] to-[#0a0a12]" />
@@ -219,7 +215,7 @@ export default function MatchesPage() { // Corrected component name
           </p>
           <button
             className="mt-4 px-7 py-4 rounded-2xl bg-white text-[#111117] font-bold shadow"
-            onClick={() => navigate("/PricingPage")} // Changed from BoostPage to PricingPage
+            onClick={() => navigate("/PricingPage")}
           >
             {t("matches.empty.tryBoost")}
           </button>
@@ -251,7 +247,7 @@ export default function MatchesPage() { // Corrected component name
                   draggable={false}
                 />
 
-                {/* Locked overlay */}
+                {/* Locked overlay for regular likes */}
                 {!unlocked && (
                   <div
                     className="absolute inset-0 flex flex-col items-center justify-center text-white cursor-pointer"
@@ -272,7 +268,7 @@ export default function MatchesPage() { // Corrected component name
                   </div>
                 )}
 
-                {/* Name badge + comment */}
+                {/* Name badge + comment (always visible for gift/superlike) */}
                 {u.isSuper && (
                   <>
 <span className="absolute left-2 top-2 flex items-center gap-1 bg-[#a259c3] text-white text-xs font-bold px-2 py-1 rounded-full shadow">
@@ -300,7 +296,7 @@ export default function MatchesPage() { // Corrected component name
                   </>
                 )}
 
-                {/* Action buttons */}
+                {/* Action buttons for unlocked cards */}
                 {unlocked && (
                   <div className="absolute left-0 right-0 bottom-2 flex items-center justify-center gap-4">
                     <button
