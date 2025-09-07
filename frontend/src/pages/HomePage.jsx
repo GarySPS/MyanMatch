@@ -169,27 +169,33 @@ function normalizeGenderKey(v) {
 
 // ---- i18n mapping helpers for profile values ----
 const OPTION_KEY = {
-  gender: {
-    man: "gender.opt.man",
-    woman: "gender.opt.woman",
-    nonbinary: "gender.opt.nonbinary",
-  },
-  sexuality: {
-    straight: "sex.opt.straight",
-    gay: "sex.opt.gay",
-    lesbian: "sex.opt.lesbian",
-    bisexual: "sex.opt.bisexual",
-    allosexual: "sex.opt.allosexual",
-    androsexual: "sex.opt.androsexual",
-    "prefer not to say": "sex.opt.na",
-  },
-  yesno: {
-    yes: "drink.opt.yes",
-    sometimes: "drink.opt.sometimes",
-    no: "drink.opt.no",
-    "prefer not to say": "drink.opt.na",
-    "no preference": null,
-  },
+  gender: {
+    man: "gender.opt.man",
+    woman: "gender.opt.woman",
+    nonbinary: "gender.opt.nonbinary",
+  },
+  sexuality: {
+    straight: "sex.opt.straight",
+    gay: "sex.opt.gay",
+    lesbian: "sex.opt.lesbian",
+    bisexual: "sex.opt.bisexual",
+    allosexual: "sex.opt.allosexual",
+    androsexual: "sex.opt.androsexual",
+    "prefer not to say": "sex.opt.na",
+  },
+  yesno: {
+    yes: "drink.opt.yes",
+    sometimes: "drink.opt.sometimes",
+    no: "drink.opt.no",
+    "prefer not to say": "drink.opt.na",
+    "no preference": null,
+  },
+  weed: {
+    yes: "weed.opt.yes",
+    sometimes: "weed.opt.sometimes",
+    no: "weed.opt.no",
+    "prefer not to say": "weed.opt.na",
+  },
   education: {
     "high school": "edu.opt.highschool",
     undergrad: "edu.opt.undergrad",
@@ -1177,7 +1183,7 @@ export default function HomePage() {
             <InfoTag icon={<FaBalanceScale />} text={translateSingle(t, "politics", politics)} />
             <InfoTag icon={<FaGlassWhiskey />} text={translateSingle(t, "yesno", user.drinking)} />
             <InfoTag icon={<FaSmoking />} text={translateSingle(t, "yesno", user.smoking)} />
-            <InfoTag icon={<FaCannabis />} text={translateSingle(t, "yesno", weed)} />
+            <InfoTag icon={<FaCannabis />} text={translateSingle(t, "weed", weed)} />
             <InfoTag icon={<FaSyringe />} text={translateSingle(t, "yesno", drugs)} />
             <InfoTag icon={<FaChild />} text={translateSingle(t, "children", children)} />
             <InfoTag icon={<FaUsers />} text={translateArray(t, "familyPlans", user.family_plans)} />
