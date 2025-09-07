@@ -10,80 +10,58 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // This is the core utility to get profile data. It now returns the data.
   const fetchProfile = useCallback(async (user) => {
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
+    if (!user) return null;
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      setProfile(data);
-
-      if (data) {
-        const cache = {
-          id: data.user_id,
-          user_id: data.user_id,
-          username: data.username,
-          onboarding_complete: !!data.onboarding_complete,
-          is_admin: !!data.is_admin,
-          language: data.language,
-          verified: !!user.email_confirmed_at || !user.email.endsWith('@myanmatch.user'),
-        };
-        localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-      }
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
     } catch (error) {
       console.error("Error fetching profile:", error);
-      setProfile(null);
-    } finally {
-      setLoading(false);
+      return null;
     }
   }, []);
 
+  // This effect manages the main auth state and the initial loading screen.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      fetchProfile(session?.user);
-    });
-
+    setLoading(true);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
+      async (_event, session) => {
         const currentUser = session?.user ?? null;
+        setSession(session);
         setUser(currentUser);
-
-        // [!CRITICAL FIX!]
-        // This makes the loading screen less aggressive. It will only show the full
-        // loading state on a major auth change (SIGN_IN/SIGN_OUT), not on a
-        // simple token refresh that happens when you refocus the tab.
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-            setLoading(true);
-        }
-        
-        await fetchProfile(currentUser);
+        const fetchedProfile = await fetchProfile(currentUser);
+        setProfile(fetchedProfile);
+        setLoading(false); // We are done with the main loading sequence.
       }
     );
-
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
   
+  // This is the "heavy" refresh for major state changes (e.g., after finishing onboarding).
+  // It will show a loading screen.
   const refreshProfile = useCallback(async () => {
-    if (user?.id) {
+    if (user) {
       setLoading(true);
-      await fetchProfile(user);
+      const refreshed = await fetchProfile(user);
+      setProfile(refreshed);
+      setLoading(false);
     }
   }, [user, fetchProfile]);
+
+  // [!NEW!] A "silent" refresh that does NOT trigger the main loading screen.
+  // We will use this for background data refreshes, like on tab focus.
+  const silentRefreshProfile = useCallback(async () => {
+    if (user) {
+      const refreshed = await fetchProfile(user);
+      setProfile(refreshed); // Updates the profile without a loading flash
+    }
+  }, [user, fetchProfile]);
 
   const value = {
     session,
@@ -91,6 +69,7 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     refreshProfile,
+    silentRefreshProfile, // <-- Export the new silent function
     signOut: () => supabase.auth.signOut(),
   };
 
