@@ -64,16 +64,15 @@ export default function SignUpPage() {
       // but explicitly setting the session here ensures a smooth immediate transition.
       await supabase.auth.setSession(authData.session);
       
-      const userId = authData.user.id;
+      const userId = authData.user.id;
 
-      // Note: A trigger in your DB should create the profile row on user creation.
-      // This update is good practice to ensure the username is set.
-      await supabase
-        .from('profiles')
-        .update({ username: username })
-        .eq('user_id', userId);
+      // [!FIX!] Using upsert is safer. It creates the profile if it doesn't exist
+      // or updates it if it does, preventing a race condition with the DB trigger.
+      await supabase
+        .from('profiles')
+        .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
 
-      navigate("/onboarding/terms");
+      navigate("/onboarding/terms");
 
     } catch (error) {
       console.error("Sign-up failed:", error.message);

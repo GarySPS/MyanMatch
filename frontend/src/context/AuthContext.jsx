@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
     signOut: () => supabase.auth.signOut(),
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {
