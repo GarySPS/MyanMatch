@@ -32,7 +32,7 @@ export default function SignUpPage() {
       setErr(m); showToast(m, "error"); return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      const m = "Username can only contain letters, numbers, and underscores.\nUsername တွင် စာလုံးများ၊ နံပါတ်များနှင့် (_) သာ ပါဝင်နိုင်သည်။ ဥပမာ: aung_aung25";
+      const m = "Username can only contain letters, numbers, and underscores.\nUsername တွင် စာလုံးများ၊ နံပါတ်များနှင့် (_) သာ ပါဝင်နိုင်သည်။ ဥပမာ: aungaung25";
       setErr(m); showToast(m, "error"); return;
     }
     if (!password || password.length < 6) {
@@ -109,7 +109,7 @@ export default function SignUpPage() {
           <input
             type="text"
             className="mb-4 w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#893086] text-lg"
-            placeholder="e.g. aung_aung25"
+            placeholder="e.g. aungaung25"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
