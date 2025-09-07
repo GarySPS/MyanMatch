@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-import { useOnboarding } from "../../context/OnboardingContext";
+import { useOnboarding } from "../../context/OnboardingContextbackup";
 import { useI18n } from "../../i18n";
 import { useAuth } from "../../context/AuthContext"; // <-- 1. Import useAuth
 

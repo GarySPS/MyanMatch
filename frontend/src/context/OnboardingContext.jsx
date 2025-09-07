@@ -1,52 +1,57 @@
-import React, { createContext, useContext, useState } from "react";
+// The new, corrected src/context/OnboardingContext.jsx
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
-// Add your default profile fields here
-const DEFAULT_PROFILE = {
-  birthdate: "",
-  age: "",
-  gender: "",
-  sexuality: "",
-  interested_in: "",
-  location: "",
-  hometown: "",
-  height: "",
-  ethnicity: [],           // array, correct
-  job_title: "",
-  workplace: "",
-  education_level: "",
-  school_name: "",
-  religion: "",
-  political_belief: "",
-  relationship: "",
-  monogamy: "",
-  children: "",
-  family_plans: "",
-  drinking: "",
-  smoking: "",
-  drugs: "",
-  weed_usage: "",
-  prompts: [],             // array, correct
-  photos: [],              // array, correct
-  voice_prompt_url: "",
-  created_at: null,        // timestamp, correct
-  updated_at: null,        // add if you use updated_at field!
-};
+// This is a custom hook that combines useState with localStorage for persistence.
+function useLocalStorageState(key, defaultValue) {
+  const [state, setState] = useState(() => {
+    try {
+      const storedValue = window.localStorage.getItem(key);
+      // If a value is stored, parse and use it. Otherwise, use the default.
+      return storedValue ? JSON.parse(storedValue) : defaultValue;
+    } catch (error) {
+      console.error("Error reading from localStorage", error);
+      return defaultValue;
+    }
+  });
+
+  // This effect runs whenever the state changes, saving the new state to localStorage.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(state));
+    } catch (error) {
+      console.error("Error writing to localStorage", error);
+    }
+  }, [key, state]);
+
+  return [state, setState];
+}
 
 const OnboardingContext = createContext();
 
 export function OnboardingProvider({ children }) {
-  const [profileData, setProfileData] = useState(DEFAULT_PROFILE);
+  // We now use our persistent state hook instead of the regular useState.
+  // The data will be stored in a localStorage item named 'onboardingProfile'.
+  const [profileData, setProfileData] = useLocalStorageState("onboardingProfile", {});
 
-  // Helper to reset all data
-  const resetProfileData = () => setProfileData(DEFAULT_PROFILE);
+  // This function will clear the state and remove the item from localStorage.
+  const resetProfileData = useCallback(() => {
+    setProfileData({});
+    window.localStorage.removeItem("onboardingProfile");
+  }, [setProfileData]);
+
+  const value = { profileData, setProfileData, resetProfileData };
 
   return (
-    <OnboardingContext.Provider value={{ profileData, setProfileData, resetProfileData }}>
+    <OnboardingContext.Provider value={value}>
       {children}
     </OnboardingContext.Provider>
   );
 }
 
-export function useOnboarding() {
-  return useContext(OnboardingContext);
-}
+export const useOnboarding = () => {
+    const context = useContext(OnboardingContext);
+    if (context === undefined) {
+        throw new Error('useOnboarding must be used within an OnboardingProvider');
+    }
+    return context;
+};
