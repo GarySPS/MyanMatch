@@ -1,94 +1,98 @@
+// The new, corrected src/pages/Onboarding/OnboardingMediaPage.jsx
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { useI18n } from "../../i18n";
+import { useAuth } from "../../context/AuthContext"; // <-- 1. Import useAuth
 
 const SLOT_COUNT = 6;
 
 function isVideoType(type) {
-  return type?.startsWith("video/");
+  return type?.startsWith("video/");
 }
 
 export default function OnboardingMediaPage() {
-  const navigate = useNavigate();
-  const { setProfileData } = useOnboarding();
-  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { setProfileData } = useOnboarding();
+  const { t } = useI18n();
+  const { user } = useAuth(); // <-- 2. Get the user from our reliable context
 
-  const [files, setFiles] = useState(Array(SLOT_COUNT).fill(null));
-  const [uploadingIndex, setUploadingIndex] = useState(null);
+  const [files, setFiles] = useState(Array(SLOT_COUNT).fill(null));
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
-  const handleFileChange = async (index, event) => {
-    const file = event.target.files[0];
-    if (!file) {
-      return;
-    }
+  const handleFileChange = async (index, event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
 
-    setUploadingIndex(index);
+    setUploadingIndex(index);
 
-    // [!FIX!] Get the user directly from Supabase to ensure the session is active.
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      alert(t("media.err.signInAgain"));
-      setUploadingIndex(null);
-      navigate("/SignInPage");
-      return;
-    }
-    const userId = user.id;
+    // [!FIX!] The manual auth check is replaced with a simple, reliable check from the context.
+    if (!user) {
+      alert(t("media.err.signInAgain"));
+      setUploadingIndex(null);
+      navigate("/SignInPage");
+      return;
+    }
+    const userId = user.id;
 
-    // DELETE previous photo if it exists
-    const prevItem = files[index];
-    if (prevItem?.path) {
-      try { await supabase.storage.from("media").remove([prevItem.path]); } catch {}
-    }
+    // DELETE previous photo if it exists
+    const prevItem = files[index];
+    if (prevItem?.path) {
+      try { await supabase.storage.from("media").remove([prevItem.path]); } catch {}
+    }
 
-    // Upload new file
-    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-    const filePath = `${userId}/onboarding/${Date.now()}_${index}.${ext}`;
+    // Upload new file
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const filePath = `${userId}/onboarding/${Date.now()}_${index}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("media")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
+    const { error: uploadError } = await supabase.storage
+      .from("media")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
 
-    if (uploadError) {
-      alert(t("media.err.uploadFailed") + ": " + uploadError.message);
-      setUploadingIndex(null);
-      return;
-    }
+    if (uploadError) {
+      alert(t("media.err.uploadFailed") + ": " + uploadError.message);
+      setUploadingIndex(null);
+      return;
+    }
 
-    const { data: urlData } = supabase.storage
-      .from("media")
-      .getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage
+      .from("media")
+      .getPublicUrl(filePath);
 
-    const updated = [...files];
-    updated[index] = {
-      file,
-      url: urlData?.publicUrl || "",
-      path: filePath,
-      isVideo: isVideoType(file.type),
-    };
-    setFiles(updated);
-    setUploadingIndex(null);
-  };
+    const updated = [...files];
+    updated[index] = {
+      file,
+      url: urlData?.publicUrl || "",
+      path: filePath,
+      isVideo: isVideoType(file.type),
+    };
+    setFiles(updated);
+    setUploadingIndex(null);
+  };
 
-  const handleRemove = async (index) => {
-    const prevItem = files[index];
-    if (prevItem?.path) {
-      try { await supabase.storage.from("media").remove([prevItem.path]); } catch {}
-    }
-    const updated = [...files];
-    updated[index] = null;
-    setFiles(updated);
-  };
+  const handleRemove = async (index) => {
+    const prevItem = files[index];
+    if (prevItem?.path) {
+      try { await supabase.storage.from("media").remove([prevItem.path]); } catch {}
+    }
+    const updated = [...files];
+    updated[index] = null;
+    setFiles(updated);
+  };
 
-  const ready = files.filter((f) => f).length >= 1; // User must upload at least 1 photo/video
+  const ready = files.filter((f) => f).length >= 1; // User must upload at least 1 photo/video
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffe6fa] via-white to-[#fff5fa] px-4 pt-10 pb-24">
-      {/* Progress Dot */}
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#ffe6fa] via-white to-[#fff5fa] px-4 pt-10 pb-24">
+      {/* ... The rest of your JSX for this page remains exactly the same ... */}
+       {/* Progress Dot */}
       <div className="flex items-center mb-3 mt-2">
         <div className="rounded-full bg-[#6e2263] text-white p-2 shadow-lg mr-2">
           <svg width={24} height={24} fill="none" aria-hidden="true">
@@ -238,6 +242,6 @@ export default function OnboardingMediaPage() {
           />
         </svg>
       </button>
-    </div>
-  );
+    </div>
+  );
 }
