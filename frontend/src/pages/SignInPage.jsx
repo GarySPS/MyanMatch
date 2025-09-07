@@ -48,11 +48,9 @@ export default function SignInPage() {
     showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
-  // This new effect handles navigation reactively AFTER a user logs in via the AuthContext.
+  // This effect handles navigation reactively AFTER a user logs in.
   useEffect(() => {
-    // Wait until the auth context has loaded the user and profile
     if (!authLoading && user && profile) {
-      // If user came from a protected page, send them back
       const from = location.state?.from?.pathname || null;
 
       if (profile.is_admin) {
@@ -94,8 +92,6 @@ export default function SignInPage() {
       password: password,
     });
     
-    // After this runs, onAuthStateChange in AuthContext will trigger,
-    // which will then cause the useEffect above to handle navigation.
     setLoading(false);
 
     if (error) {
@@ -103,6 +99,17 @@ export default function SignInPage() {
       setErr(m);
       showToast(m, "error");
     }
+  }
+
+  // [!ADD!] This prevents the sign-in form from flashing for logged-in users.
+  if (authLoading || user) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ backgroundColor: "#21101e" }}
+        aria-busy="true"
+      />
+    );
   }
 
   return (

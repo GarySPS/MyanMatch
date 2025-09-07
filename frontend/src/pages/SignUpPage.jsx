@@ -1,15 +1,36 @@
-// src/pages/SignUpPage.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
 /* --- Pretty toast (optional) --- */
 function MMToast({ open, type = "error", text = "", onClose }) {
-  // ... (keep your MMToast component)
+  if (!open) return null;
+  const isErr = type === "error";
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[80] bottom-[calc(env(safe-area-inset-bottom)+110px)]"
+      role="status"
+      aria-live="polite"
+      onClick={onClose}
+    >
+      <div
+        className={`px-4 py-3 rounded-2xl shadow-2xl border ${
+          isErr
+            ? "bg-gradient-to-tr from-red-500 to-red-700 text-white border-white/20"
+            : "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white border-white/20"
+        }`}
+      >
+        <div className="font-semibold text-sm">{text}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -19,8 +40,23 @@ export default function SignUpPage() {
   const [toastType, setToastType] = useState("error");
   const [toastText, setToastText] = useState("");
 
+  // [!ADD!] Add redirection logic for users who are already logged in.
+  useEffect(() => {
+    if (!authLoading && user && profile) {
+      if (profile.onboarding_complete) {
+        navigate("/HomePage", { replace: true });
+      } else {
+        navigate("/onboarding/terms", { replace: true });
+      }
+    }
+  }, [user, profile, authLoading, navigate]);
+
   function showToast(text, type = "error") {
-    // ... (keep your showToast function)
+    setToastText(text);
+    setToastType(type);
+    setToastOpen(true);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToastOpen(false), 2200);
   }
 
   async function handleUsernameSignUp(e) {
@@ -60,19 +96,17 @@ export default function SignUpPage() {
         throw new Error("Sign up did not return a user or session.");
       }
       
-      // The onAuthStateChange listener in AuthContext will now handle this,
-      // but explicitly setting the session here ensures a smooth immediate transition.
       await supabase.auth.setSession(authData.session);
       
-      const userId = authData.user.id;
+      const userId = authData.user.id;
 
-      // [!FIX!] Using upsert is safer. It creates the profile if it doesn't exist
-      // or updates it if it does, preventing a race condition with the DB trigger.
-      await supabase
-        .from('profiles')
-        .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
+      await supabase
+        .from('profiles')
+        .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
 
-      navigate("/onboarding/terms");
+      // The AuthContext will now detect the new user and the useEffect will redirect.
+      // A manual navigate is still good for speed.
+      navigate("/onboarding/terms");
 
     } catch (error) {
       console.error("Sign-up failed:", error.message);
@@ -85,6 +119,17 @@ export default function SignUpPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // [!ADD!] This prevents the sign-up form from flashing on screen for logged-in users before redirecting.
+  if (authLoading || user) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ backgroundColor: "#21101e" }}
+        aria-busy="true"
+      />
+    );
   }
 
   return (
