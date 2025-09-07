@@ -10,9 +10,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // This function fetches the profile and always ensures loading is finished.
   const fetchProfile = useCallback(async (user) => {
-    // If there's no user, there's no profile to fetch. We're done loading.
     if (!user) {
       setProfile(null);
       setLoading(false);
@@ -26,16 +24,13 @@ export function AuthProvider({ children }) {
         .eq("user_id", user.id)
         .single();
       
-      // A "PGRST116" error means no row was found. This is expected right after
-      // signup before the profile is created. We treat it as a null profile.
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
       
-      setProfile(data); // Set profile to the data found, or null if it doesn't exist yet.
+      setProfile(data);
 
-      // [!FIX!] Also update the legacy localStorage cache here.
-      if (data) {
+      if (data) {
         const cache = {
           id: data.user_id,
           user_id: data.user_id,
@@ -47,26 +42,35 @@ export function AuthProvider({ children }) {
         };
         localStorage.setItem("myanmatch_user", JSON.stringify(cache));
       }
-
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);
     } finally {
-      setLoading(false); // No matter what happens, we are done loading.
+      setLoading(false);
     }
   }, []);
 
-
-  // This effect runs once on mount and sets up the auth listener.
   useEffect(() => {
-    // onAuthStateChange is the single source of truth for auth state.
-    // It fires immediately with the current session, and then for any changes.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      fetchProfile(session?.user);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        setLoading(true); // Set loading to true while we fetch the profile.
+
+        // [!CRITICAL FIX!]
+        // This makes the loading screen less aggressive. It will only show the full
+        // loading state on a major auth change (SIGN_IN/SIGN_OUT), not on a
+        // simple token refresh that happens when you refocus the tab.
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            setLoading(true);
+        }
+        
         await fetchProfile(currentUser);
       }
     );
@@ -74,7 +78,6 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
   
-  // Function for other components to manually trigger a profile refresh.
   const refreshProfile = useCallback(async () => {
     if (user?.id) {
       setLoading(true);
@@ -91,7 +94,6 @@ export function AuthProvider({ children }) {
     signOut: () => supabase.auth.signOut(),
   };
 
-  // Always render children. ProtectedRoute will now handle showing/hiding content.
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
