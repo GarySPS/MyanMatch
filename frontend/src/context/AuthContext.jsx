@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 
@@ -10,7 +9,6 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // This is the core utility to get profile data. It now returns the data.
   const fetchProfile = useCallback(async (user) => {
     if (!user) return null;
     try {
@@ -27,7 +25,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // This effect manages the main auth state and the initial loading screen.
   useEffect(() => {
     setLoading(true);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -35,33 +32,50 @@ export function AuthProvider({ children }) {
         const currentUser = session?.user ?? null;
         setSession(session);
         setUser(currentUser);
+        
         const fetchedProfile = await fetchProfile(currentUser);
         setProfile(fetchedProfile);
-        setLoading(false); // We are done with the main loading sequence.
+
+        // [!CRITICAL FIX!] Add this block to keep localStorage in sync
+        if (currentUser && fetchedProfile) {
+          const cache = {
+            id: fetchedProfile.user_id,
+            user_id: fetchedProfile.user_id,
+            username: fetchedProfile.username,
+            first_name: fetchedProfile.first_name,
+            last_name: fetchedProfile.last_name,
+            avatar_url: fetchedProfile.avatar_url,
+            onboarding_complete: !!fetchedProfile.onboarding_complete,
+            is_admin: !!fetchedProfile.is_admin,
+            verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
+          };
+          localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+        } else if (!currentUser) {
+            localStorage.removeItem("myanmatch_user");
+        }
+        // [!END OF FIX!]
+
+        setLoading(false);
       }
     );
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
   
-  // This is the "heavy" refresh for major state changes (e.g., after finishing onboarding).
-  // It will show a loading screen.
   const refreshProfile = useCallback(async () => {
     if (user) {
       setLoading(true);
       const refreshed = await fetchProfile(user);
-      setProfile(refreshed);
-      setLoading(false);
+      setProfile(refreshed);
+      setLoading(false);
     }
   }, [user, fetchProfile]);
 
-  // [!NEW!] A "silent" refresh that does NOT trigger the main loading screen.
-  // We will use this for background data refreshes, like on tab focus.
-  const silentRefreshProfile = useCallback(async () => {
-    if (user) {
-      const refreshed = await fetchProfile(user);
-      setProfile(refreshed); // Updates the profile without a loading flash
-    }
-  }, [user, fetchProfile]);
+  const silentRefreshProfile = useCallback(async () => {
+    if (user) {
+      const refreshed = await fetchProfile(user);
+      setProfile(refreshed);
+    }
+  }, [user, fetchProfile]);
 
   const value = {
     session,
@@ -69,8 +83,12 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     refreshProfile,
-    silentRefreshProfile, // <-- Export the new silent function
-    signOut: () => supabase.auth.signOut(),
+    silentRefreshProfile,
+    signOut: () => {
+      // Also clear local storage on sign out
+      localStorage.removeItem("myanmatch_user");
+      return supabase.auth.signOut();
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
