@@ -27,7 +27,7 @@ export default function WelcomePage() {
 
   // While checking auth or if a user is found, show a blank page to avoid flashing the login buttons.
   // The useEffect will handle the redirect.
-  if (loading || user) {
+ if (loading) {
     return (
       <div
         className="min-h-screen w-full"
