@@ -79,7 +79,6 @@ const publicRoutes = [
 const onboardingRoutes = [
   { path: "/onboarding/terms", element: <OnboardingTermsPage /> },
   { path: "/onboarding/language", element: <LanguageOnboarding /> }, // [!FIX!] Moved language route here for consistent protection
-  { path: "/onboarding/welcome", element: <OnboardingWelcomePage /> },
   { path: "/onboarding/name", element: <NamePage /> },
   { path: "/onboarding/birthdate", element: <BirthdatePage /> },
   { path: "/onboarding/details-intro", element: <DetailsIntroPage /> },

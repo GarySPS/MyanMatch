@@ -7,27 +7,31 @@ export default function WelcomePage() {
   const { user, profile, loading } = useAuth();
 
   useEffect(() => {
-    // Wait until the authentication state is resolved to prevent flashes of content.
+    // Wait until the authentication state is resolved.
     if (loading) {
       return;
     }
 
-    // If we have a user and their profile, we need to redirect them.
+    // If we have a user and their profile, redirect them.
     if (user && profile) {
       if (profile.onboarding_complete) {
-        // If they are fully onboarded, go to the main app.
+        // Fully onboarded -> go to the main app.
         navigate("/HomePage", { replace: true });
       } else {
-        // If they are logged in but not onboarded, send them to onboarding.
+        // Logged in but not onboarded -> send to onboarding.
         navigate("/onboarding/terms", { replace: true });
       }
+    } else if (!loading && user && !profile) {
+      // Handle case where user exists but profile is missing.
+      // This is a failsafe to prevent getting stuck.
+      navigate("/onboarding/terms", { replace: true });
     }
-    // If there's no user, this effect does nothing, and the welcome page content will be shown.
+    // If no user, the welcome page content will be shown.
   }, [user, profile, loading, navigate]);
 
-  // While checking auth or if a user is found, show a blank page to avoid flashing the login buttons.
-  // The useEffect will handle the redirect.
- if (loading) {
+  // While checking auth, show a blank loading page.
+  // The useEffect above will handle all redirects once loading is complete.
+  if (loading) {
     return (
       <div
         className="min-h-screen w-full"
@@ -38,7 +42,7 @@ export default function WelcomePage() {
     );
   }
 
-  // This JSX is now only ever shown to users who are truly logged out.
+  // This JSX is only shown to users who are logged out.
   return (
     <div
       className="min-h-screen w-full flex flex-col justify-center items-center relative overflow-hidden p-4"
@@ -49,7 +53,7 @@ export default function WelcomePage() {
       {/* Overlay */}
       <div className="absolute inset-0 bg-black bg-opacity-40 z-0" />
 
-      {/* Decorative Elements */}
+      {/* Content */}
       <div className="relative z-20 flex flex-col items-center justify-center flex-grow w-full">
         <img
           src="/images/myanmatch-logo.png"

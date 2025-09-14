@@ -26,40 +26,49 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setSession(session);
-        setUser(currentUser);
-        
-        const fetchedProfile = await fetchProfile(currentUser);
-        setProfile(fetchedProfile);
+    setLoading(true);
 
-        // [!CRITICAL FIX!] Add this block to keep localStorage in sync
-        if (currentUser && fetchedProfile) {
-          const cache = {
-            id: fetchedProfile.user_id,
-            user_id: fetchedProfile.user_id,
-            username: fetchedProfile.username,
-            first_name: fetchedProfile.first_name,
-            last_name: fetchedProfile.last_name,
-            avatar_url: fetchedProfile.avatar_url,
-            onboarding_complete: !!fetchedProfile.onboarding_complete,
-            is_admin: !!fetchedProfile.is_admin,
-            verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
-          };
-          localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-        } else if (!currentUser) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setSession(session);
+        setUser(currentUser);
+
+        if (currentUser) {
+          const fetchedProfile = await fetchProfile(currentUser);
+          setProfile(fetchedProfile);
+          
+          if (fetchedProfile) {
+            const cache = {
+              id: fetchedProfile.user_id,
+              user_id: fetchedProfile.user_id,
+              username: fetchedProfile.username,
+              first_name: fetchedProfile.first_name,
+              last_name: fetchedProfile.last_name,
+              avatar_url: fetchedProfile.avatar_url,
+              onboarding_complete: !!fetchedProfile.onboarding_complete,
+              is_admin: !!fetchedProfile.is_admin,
+              verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
+            };
+            localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+          } else {
+            // Failsafe: if user exists in auth but has no profile, clear local storage
             localStorage.removeItem("myanmatch_user");
+          }
+        } else {
+          // No user, clear everything
+          setProfile(null);
+          localStorage.removeItem("myanmatch_user");
         }
-        // [!END OF FIX!]
+        
+        // This is the key fix: It now waits for the profile to be fetched (or not found)
+        // before declaring that loading is finished.
+        setLoading(false);
+      }
+    );
 
-        setLoading(false);
-      }
-    );
-    return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
   
   const refreshProfile = useCallback(async () => {
     if (user) {
