@@ -110,7 +110,8 @@ export default function OnboardingMediaPage() {
       const { error } = await supabase
         .from("profiles")
         .update(finalProfileData)
-        .eq("user_id", uid);
+        .eq("user_id", uid)
+        .select();
       
       if (error) throw error;
 
