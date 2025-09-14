@@ -101,16 +101,16 @@ export default function SignInPage() {
     }
   }
 
-  // [!ADD!] This prevents the sign-in form from flashing for logged-in users.
-  if (authLoading || user) {
-    return (
-      <div
-        className="min-h-screen w-full"
-        style={{ backgroundColor: "#21101e" }}
-        aria-busy="true"
-      />
-    );
-  }
+  // This prevents the sign-in form from flashing for logged-in users.
+  if (authLoading) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ backgroundColor: "#21101e" }}
+        aria-busy="true"
+      />
+    );
+  }
 
   return (
     <div

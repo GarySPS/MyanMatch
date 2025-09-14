@@ -87,47 +87,58 @@ export default function OnboardingMediaPage() {
     setFiles(updated);
   };
 
-  // --- NEW FUNCTION TO HANDLE FINAL SAVE ---
-  const handleFinishOnboarding = async () => {
-    if (!ready || isSaving || !uid) return;
-    setIsSaving(true);
+    const handleFinishOnboarding = async () => {
+    if (!ready || isSaving || !uid) return;
+    setIsSaving(true);
 
-    const urls = files.map((f) => f?.url).filter(Boolean);
-    const paths = files.map((f) => f?.path).filter(Boolean);
+    try {
+      const urls = files.map((f) => f?.url).filter(Boolean);
+      const paths = files.map((f) => f?.path).filter(Boolean);
 
-    // Combine all data from context with the new media data
-    const finalProfileData = {
-      ...profileData, // Data from previous steps (name, gender, etc.)
-      media: urls,
-      media_paths: paths,
-      avatar_url: urls[0] || null,
-      avatar_path: paths[0] || null,
-      avatar_index: 0,
-      onboarding_complete: true, // <-- SET THE FLAG HERE!
-    };
+      // Combine all data from previous steps with the new media data
+      const finalProfileData = {
+        ...profileData,
+        media: urls,
+        media_paths: paths,
+        avatar_url: urls[0] || null,
+        avatar_path: paths[0] || null,
+        avatar_index: 0,
+        onboarding_complete: true,
+        updated_at: new Date().toISOString(),
+      };
 
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(finalProfileData)
-        .eq("user_id", uid)
-        .select();
-      
-      if (error) throw error;
+      // --- CRITICAL DATA CLEANING ---
+      // This ensures all data is in the correct format for the database
+      if (finalProfileData.birthdate) {
+        try {
+          finalProfileData.birthdate = new Date(finalProfileData.birthdate).toISOString().slice(0, 10);
+        } catch {
+          console.error("Invalid birthdate format");
+          finalProfileData.birthdate = null;
+        }
+      }
+      // Add any other specific data cleaning from your old buildPayload function if needed
+      // For example, converting height to a consistent format, etc.
 
-      // Refresh the main profile in AuthContext
-      await refreshProfile();
-      
-      // Navigate to the final welcome screen
-      navigate("/onboarding/finish");
+      const { error } = await supabase
+        .from("profiles")
+        .update(finalProfileData)
+        .eq("user_id", uid)
+        .select();
+      
+      if (error) throw error;
 
-    } catch (error) {
-      console.error("Failed to save final profile:", error);
-      alert("There was an error saving your profile. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      await refreshProfile();
+      
+      navigate("/onboarding/finish", { replace: true });
+
+    } catch (error) {
+      console.error("Failed to save final profile:", error);
+      alert("There was an error saving your profile. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const ready = files.filter((f) => f).length >= 1;
 
