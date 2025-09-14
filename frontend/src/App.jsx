@@ -17,7 +17,6 @@ import SignUpPage from "./pages/SignUpPage";
 import VerifyCodePage from "./pages/VerifyCodePage";
 import VerifyYourIdentityPage from "./pages/VerifyYourIdentityPage";
 import OnboardingTermsPage from "./pages/Onboarding/TermsPage";
-import OnboardingWelcomePage from "./pages/Onboarding/WelcomePage";
 import LanguageOnboarding from "./pages/Onboarding/LanguageOnboarding";
 import NamePage from "./pages/Onboarding/NamePage";
 import BirthdatePage from "./pages/Onboarding/BirthdatePage";
