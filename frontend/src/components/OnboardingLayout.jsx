@@ -1,11 +1,32 @@
-const OnboardingLayout = ({ children }) => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden">
-    {/* Overlay for dimming (optional) */}
-    <div className="absolute inset-0 bg-black bg-opacity-20 z-0 pointer-events-none" />
-    <main className="relative z-10 w-full flex-1 flex flex-col justify-center items-center px-0">
-      {children}
-    </main>
-  </div>
-);
+// src/components/OnboardingLayout.jsx
+
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
+
+const OnboardingLayout = ({ children }) => {
+  const { loading } = useAuth();
+
+  // Show a full-page loading screen while AuthContext is busy.
+  // This is the true fix for the "stuck on red screen" bug.
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ backgroundColor: "#82142d" }} // Your app's loading color
+        aria-busy="true"
+        aria-label="Loading..."
+      />
+    );
+  }
+
+  // Once loading is false, render the actual content.
+  return (
+    <div className="min-h-screen w-full">
+      <main className="w-full h-full min-h-screen flex flex-col">
+        {children}
+      </main>
+    </div>
+  );
+};
 
 export default OnboardingLayout;
