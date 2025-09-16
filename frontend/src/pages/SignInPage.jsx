@@ -128,7 +128,7 @@ export default function SignInPage() {
         <form onSubmit={handleSignIn} className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Username or Email
-            <span className="block text-xs text-gray-500 font-normal">Username (သို့) Email</span>
+            <span className="block text-xs text-gray-500 font-normal"> အကောင့်အမည် (သို့) gmail</span>
           </label>
           <input
             type="text"

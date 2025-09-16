@@ -51,33 +51,35 @@ export default function SmokingPage() {
                 </h1>
 
                 <div className="w-full flex flex-col gap-3 mt-4 mb-6">
-                    {OPTIONS.map(({ key, value }) => { // 2. DESTRUCTURE 'value'
-                        const label = t(key);
-                        const selected = value === value; // 3. COMPARE against canonical 'value'
-                        return (
-                            <button
-                                key={key}
-                                type="button"
-                                className={`w-full flex items-center justify-between px-6 py-4 rounded-xl shadow-sm border-2 transition ${
-                                    selected
-                                        ? "border-[#a55596] bg-[#fae7f6]/80 text-[#6e2263] font-bold scale-105"
-                                        : "border-gray-200 bg-gray-50 text-gray-700"
-                                }`}
-                                onClick={() => setValue(value)} // 4. SAVE 'value' to state
-                            >
-                                <span className="text-lg">{label}</span>
-                                <span className={`flex items-center justify-center w-6 h-6 rounded-full border-2 ${
-                                    selected ? "border-[#a55596] bg-[#a55596]" : "border-gray-300 bg-white"
-                                }`}>
-                                    {selected && (
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <circle cx="12" cy="12" r="8" fill="currentColor" />
-                                        </svg>
-                                    )}
-                                </span>
-                            </button>
-                        );
-                    })}
+   {OPTIONS.map(({ key, value: optionValue }) => { // Renamed 'value' to 'optionValue'
+  const label = t(key);
+  const selected = value === optionValue; // Correctly compare component state 'value' to the 'optionValue'
+  return (
+    <button
+      key={key}
+      type="button"
+      className={`w-full flex items-center justify-between px-6 py-4 rounded-xl shadow-sm border-2 transition ${
+        selected
+          ? "border-[#a55596] bg-[#fae7f6]/80 text-[#6e2263] font-bold scale-105"
+          : "border-gray-200 bg-gray-50 text-gray-700"
+      }`}
+      onClick={() => setValue(optionValue)} // Save the correct 'optionValue'
+    >
+      <span className="text-lg">{label}</span>
+      <span
+        className={`flex items-center justify-center w-6 h-6 rounded-full border-2 ${
+          selected ? "border-[#a55596] bg-[#a55596]" : "border-gray-300 bg-white"
+        }`}
+      >
+        {selected && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" fill="currentColor" />
+          </svg>
+        )}
+      </span>
+    </button>
+  );
+})}
                 </div>
 
                 <button
