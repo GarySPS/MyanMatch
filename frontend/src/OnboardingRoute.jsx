@@ -1,3 +1,5 @@
+// src/OnboardingRoute.jsx
+
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 
@@ -5,7 +7,7 @@ export default function OnboardingRoute({ children }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  // 1. While the context is loading user and profile, show nothing.
+  // 1. While the context is loading, show nothing.
   if (loading) {
     return null;
   }
@@ -15,20 +17,13 @@ export default function OnboardingRoute({ children }) {
     return <Navigate to="/SignInPage" state={{ from: location }} replace />;
   }
   
-  // 3. [!THIS IS THE FIX!]
-  // If loading is done and there IS a user, but their profile hasn't loaded yet,
-  // continue showing nothing. This prevents the blank page bug on refresh.
-  if (!profile) {
-    return null;
-  }
-
-  // 4. If the profile IS loaded and onboarding is complete, they cannot go back.
-  // Send them to the main app homepage.
-  if (profile.onboarding_complete) {
+  // 3. If the user IS logged in and HAS finished onboarding,
+  // they cannot go back to the onboarding pages. Send them to the main app.
+  if (profile && profile.onboarding_complete) {
     return <Navigate to="/HomePage" replace />;
   }
 
-  // 5. If all checks pass (loading is done, user and profile exist, onboarding is NOT complete),
+  // 4. If all checks pass (user is logged in and has NOT finished onboarding),
   // then it is safe to show the onboarding page.
   return children;
 }
