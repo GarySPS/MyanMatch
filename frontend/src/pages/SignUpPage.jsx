@@ -98,16 +98,15 @@ export default function SignUpPage() {
 
       const userId = authData.user.id;
 
-      // Step 2: Create the user's profile in the 'profiles' table
-      // [!THIS IS THE FIX!] We are changing .upsert() to a simpler .insert()
-      // and adding a specific error check.
+      // Step 2: Create or update the user's profile in the 'profiles' table
+      // Using .upsert() prevents the "duplicate key" error if a profile already exists.
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({ user_id: userId, username: username });
+        .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
 
       if (profileError) {
         // If this fails, it's a critical error.
-        throw new Error(`Profile creation failed: ${profileError.message}`);
+        throw new Error(`Profile creation/update failed: ${profileError.message}`);
       }
 
       // If both steps succeed, navigate to onboarding.
