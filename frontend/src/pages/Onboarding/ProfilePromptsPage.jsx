@@ -33,7 +33,7 @@ function PromptModal({ open, onClose, onSelect }) {
               <button
                 key={k}
                 className="w-full text-left py-3 px-2 rounded-lg text-base border-b last:border-b-0 hover:bg-[#f9e6f9] active:bg-[#f2d5f8] text-[#82144d] font-medium transition"
-                onClick={() => { onSelect(label); onClose(); }}
+                onClick={() => { onSelect(k); onClose(); }}
               >
                 {label}
               </button>

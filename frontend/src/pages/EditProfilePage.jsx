@@ -5,6 +5,7 @@ import {
   FaPlus, FaGripVertical, FaTrash, FaChevronUp, FaChevronDown,
   FaMicrophone, FaRedo, FaPlay, FaSave
 } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 
 // helpers for safe audio filenames/content-types
 function safeAudioExt(mime = "") {
@@ -579,8 +580,8 @@ const VOICE_PROMPTS = useMemo(
   [t]
 );
   const deletedPathsRef = useRef([]); // collect paths to delete on save
-  const currentUser = useMemo(() => JSON.parse(localStorage.getItem("myanmatch_user") || "{}"), []);
-  const userId = currentUser?.user_id || currentUser?.id || null;
+  const { user, profile, refreshProfile } = useAuth();
+  const userId = user?.id; 
   const [saving, setSaving] = useState(false);
   // each slot: { url?: string, path?: string, preview?: string, file?: File }
   const [photos, setPhotos] = useState(Array(6).fill(null));
@@ -937,107 +938,93 @@ try {
     setVitals((prev) => ({ ...prev, birthdate: iso, age: computeAge(iso) }));
   };
 
-// src/pages/EditProfilePage.jsx
-
-// REPLACE THIS ENTIRE FUNCTION
-
 const handleSave = async () => {
-  if (!userId) return;
-  setSaving(true);
+    if (!userId) return;
+    setSaving(true);
 
-  // 1) Upload any new files and produce final media/path lists
-  const uploadedUrls = [];
-  const nextPhotosState = [...photos]; // Clone to update paths after upload
-  const mediaPaths = [];
+    // 1) Upload any new files and produce final media/path lists
+    const uploadedUrls = [];
+    const nextPhotosState = [...photos]; // Clone to update paths after upload
+    const mediaPaths = [];
 
-  for (let i = 0; i < nextPhotosState.length; i++) {
-    const slot = nextPhotosState[i];
-    if (!slot) continue;
+    for (let i = 0; i < nextPhotosState.length; i++) {
+        const slot = nextPhotosState[i];
+        if (!slot) continue;
 
-    if (slot.file) { // This is a new file that needs uploading
-      if (slot.path) { // If it's replacing an old photo, delete the old one
-        try {
-          await supabase.storage.from("media").remove([slot.path]);
-        } catch (e) {
-          console.warn("Could not remove previous file:", slot.path, e);
+        if (slot.file) { // This is a new file that needs uploading
+            if (slot.path) { // If it's replacing an old photo, delete the old one
+                try {
+                    await supabase.storage.from("media").remove([slot.path]);
+                } catch (e) {
+                    console.warn("Could not remove previous file:", slot.path, e);
+                }
+            }
+            const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
+            const newPath = `${userId}/media/${Date.now()}_${i}.${ext}`;
+            const { error: upErr } = await supabase.storage.from("media").upload(newPath, slot.file, { upsert: true });
+
+            if (upErr) {
+                showToast(t("edit.toast.photoFail"), "error");
+                setSaving(false);
+                return;
+            }
+            const { data: pub } = supabase.storage.from("media").getPublicUrl(newPath);
+            uploadedUrls.push(pub.publicUrl);
+            mediaPaths.push(newPath);
+            nextPhotosState[i] = { url: pub.publicUrl, path: newPath };
+        } else if (slot.url) { // This is an existing photo
+            uploadedUrls.push(slot.url);
+            if (slot.path) mediaPaths.push(slot.path);
         }
-      }
-
-      const ext = (slot.file.name.split(".").pop() || "jpg").toLowerCase();
-      const newPath = `${userId}/media/${Date.now()}_${i}.${ext}`;
-
-      const { error: upErr } = await supabase.storage.from("media").upload(newPath, slot.file, { upsert: true });
-
-      if (upErr) {
-        showToast(t("edit.toast.photoFail"), "error");
-        setSaving(false);
-        return;
-      }
-
-      const { data: pub } = supabase.storage.from("media").getPublicUrl(newPath);
-      uploadedUrls.push(pub.publicUrl);
-      mediaPaths.push(newPath);
-      nextPhotosState[i] = { url: pub.publicUrl, path: newPath }; // Update the cloned state
-    } else if (slot.url) { // This is an existing photo
-      uploadedUrls.push(slot.url);
-      if (slot.path) mediaPaths.push(slot.path);
     }
-  }
 
-  // Delete any photos explicitly removed via the trash icon
-  if (deletedPathsRef.current.length) {
-    try {
-      await supabase.storage.from("media").remove(deletedPathsRef.current);
-    } catch (e) {
-      console.warn("Some photo deletes failed:", e);
-    } finally {
-      deletedPathsRef.current = [];
+    // Delete any photos explicitly removed
+    if (deletedPathsRef.current.length) {
+        try {
+            await supabase.storage.from("media").remove(deletedPathsRef.current);
+        } catch (e) {
+            console.warn("Some photo deletes failed:", e);
+        } finally {
+            deletedPathsRef.current = [];
+        }
     }
-  }
-  
-  setPhotos(nextPhotosState); // Update UI state with new paths/urls
+    setPhotos(nextPhotosState);
 
-  // 2) Build the final payload for the database
-  const voiceBlock = voiceMeta
-    ? { ...voiceMeta, prompt: voicePromptKey || voiceMeta.prompt || "", prompt_key: voicePromptKey || voiceMeta.prompt_key || "" }
-    : (voiceUrl ? { url: voiceUrl, prompt: voicePromptKey || "", prompt_key: voicePromptKey || "" } : null);
+    // 2) Build the final payload for the database
+    const voiceBlock = voiceMeta
+        ? { ...voiceMeta, prompt: voicePromptKey || voiceMeta.prompt || "", prompt_key: voicePromptKey || voiceMeta.prompt_key || "" }
+        : (voiceUrl ? { url: voiceUrl, prompt: voicePromptKey || "", prompt_key: voicePromptKey || "" } : null);
 
-  const safePayload = {
-    ...vitals, // Spreads all the simple text fields like first_name, gender, etc.
-    
-    // [!THE BUG FIX IS HERE!]
-    // Ensure arrays are saved as native text arrays, not JSON strings.
-    ethnicity: Array.isArray(vitals.ethnicity) ? vitals.ethnicity : [],
-    religion: Array.isArray(vitals.religion) ? vitals.religion : [],
-    family_plans: Array.isArray(vitals.family_plans) ? vitals.family_plans : [],
-    schools: Array.isArray(vitals.schools) ? vitals.schools : [],
+    const safePayload = {
+        ...vitals,
+        ethnicity: Array.isArray(vitals.ethnicity) ? vitals.ethnicity : (vitals.ethnicity ? [vitals.ethnicity] : []),
+        religion: Array.isArray(vitals.religion) ? vitals.religion : (vitals.religion ? [vitals.religion] : []),
+        family_plans: Array.isArray(vitals.family_plans) ? vitals.family_plans : (vitals.family_plans ? [vitals.family_plans] : []),
+        schools: Array.isArray(vitals.schools) ? vitals.schools : (vitals.schools ? [vitals.schools] : []),
+        media: uploadedUrls,
+        media_paths: mediaPaths,
+        photos: uploadedUrls,
+        prompts: prompts.filter(p => p.prompt && p.answer),
+        voicePrompt: voiceBlock,
+        updated_at: new Date().toISOString(),
+    };
+    delete safePayload.onboarding_complete;
 
-    // Update media fields
-    media: uploadedUrls,       // For compatibility, stores public URLs
-    media_paths: mediaPaths,   // Stores storage paths for easier management
-    photos: uploadedUrls,      // Legacy text[] field for photos
+    // 3) Update the database
+    const { error } = await supabase
+        .from("profiles")
+        .update(safePayload)
+        .eq("user_id", userId);
 
-    // Update other fields
-    prompts,
-    voicePrompt: voiceBlock,
-    onboarding_complete: true,
-    updated_at: new Date().toISOString(),
-  };
+    setSaving(false);
 
-  // 3) Update the database
-  const { error } = await supabase
-    .from("profiles")
-    .update(safePayload)
-    .eq("user_id", userId);
-
-  setSaving(false);
-
-  if (error) {
-    console.error("Save error:", error);
-    showToast(t("edit.toast.saveFail"), "error");
-  } else {
-    showToast(t("edit.toast.saveOk"), "success");
-  }
+    if (error) {
+        console.error("Save error:", error);
+        showToast(t("edit.toast.saveFail"), "error");
+    } else {
+        showToast(t("edit.toast.saveOk"), "success");
+        await refreshProfile();
+    }
 };
 
   // gender UI capitalized

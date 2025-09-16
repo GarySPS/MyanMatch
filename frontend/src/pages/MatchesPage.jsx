@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
+
 
 function normalizePlan(p) {
   const s = String(p || "").toLowerCase().trim();
@@ -12,6 +14,8 @@ function normalizePlan(p) {
 }
 
 export default function MatchesPages() {
+  const { user: me } = useAuth();
+  const myId = me?.user_id;
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -26,8 +30,6 @@ export default function MatchesPages() {
     async function fetchLikes() {
       setLoading(true);
 
-      const local = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-      const userId = local.user_id || local.id;
       if (!userId) {
         if (mounted) {
           setLikes([]);
@@ -165,7 +167,7 @@ return {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [myId]);
 
   const isEmpty = !likes.length && !loading;
 

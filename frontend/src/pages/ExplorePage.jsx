@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { FaGift, FaBolt, FaCrown, FaCheckCircle } from "react-icons/fa";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 /* ---------- utilities ---------- */
 function nowISO() { return new Date().toISOString(); }
@@ -212,7 +213,7 @@ function SkeletonCard() {
 export default function ExplorePage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const me = useMemo(() => getLocalUser(), []);
+  const { user: me } = useAuth();
   const [loading, setLoading] = useState(true);
   const [boosted, setBoosted] = useState([]);
   const [banner, setBanner] = useState("");

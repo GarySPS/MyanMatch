@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient";
 import Layout from "../components/Layout";
 import { FaChevronLeft, FaFloppyDisk, FaCheck, FaWandMagicSparkles, FaLock } from "react-icons/fa6";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 /* ------------ local user ------------ */
 function getLocalUserId() {
@@ -148,7 +149,8 @@ function useLabels() {
 
 /* ------------ page ------------ */
 export default function DatingPreferencesPage() {
-  const userId = getLocalUserId();
+  const { user: profile } = useAuth();
+  const userId = profile?.user_id;
   const navigate = useNavigate();
   const { t, gender: Lg, relationship: Lrel, religion: Lrelg, politics: Lpol, family: Lfam, ethnicity: Leth, yn: Lyn, edu: Le } = useLabels();
 

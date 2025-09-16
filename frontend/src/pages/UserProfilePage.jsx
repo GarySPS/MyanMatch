@@ -11,6 +11,7 @@ import {
 import PhotoLikeModal from "../components/PhotoLikeModal";
 import { canSwapToday, logSwap } from "../lib/swaps";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 // ---- Age helpers (same as HomePage) ----
 function calcAgeFromBirthdate(birthdate) {
@@ -655,8 +656,8 @@ function showToast(text, type = "success") {
   const navigate = useNavigate();
   const { id, userId } = useParams(); // supports /profile/:id OR /profile/:userId
 
-  const me = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-  const myId = me?.user_id || me?.id || null;
+  const { user: authUser } = useAuth();
+  const myId = authUser?.id;
   const viewingUserId = id || userId || myId; // if no param, show self
   const isSelf = viewingUserId && myId && String(viewingUserId) === String(myId);
 

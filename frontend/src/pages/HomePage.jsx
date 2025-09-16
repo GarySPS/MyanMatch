@@ -12,6 +12,7 @@ import {
 import PhotoLikeModal from "../components/PhotoLikeModal";
 import { canSwapToday, logSwap } from "../lib/swaps";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 // put this just after renderValue(...)
@@ -740,18 +741,8 @@ export default function HomePage() {
     }, 3000);
   }
 
-  // === SAFE CURRENT USER ID (prevents bad queries) ===
-  const currentUser = (() => {
-    try { return JSON.parse(localStorage.getItem("myanmatch_user") || "{}"); }
-    catch { return {}; }
-  })();
-
-  // accept only a UUID-like id (prevents sending user_id=eq.)
-  const myId = (() => {
-    const c = currentUser || {};
-    const id = c.user_id || c.id || "";
-    return typeof id === "string" && /^[0-9a-f-]{20,}$/i.test(id) ? id : null;
-  })();
+ const { user: me } = useAuth(); // Get the logged-in user's profile from the context
+ const myId = me?.user_id;       // Get the user_id from the profile
 
   useEffect(() => {
     async function fetchProfiles() {

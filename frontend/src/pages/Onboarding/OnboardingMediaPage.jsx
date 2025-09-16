@@ -87,58 +87,72 @@ export default function OnboardingMediaPage() {
     setFiles(updated);
   };
 
-    const handleFinishOnboarding = async () => {
-    if (!ready || isSaving || !uid) return;
-    setIsSaving(true);
 
-    try {
-      const urls = files.map((f) => f?.url).filter(Boolean);
-      const paths = files.map((f) => f?.path).filter(Boolean);
+  const handleFinishOnboarding = async () => {
+    if (!ready || isSaving || !uid) return;
+    setIsSaving(true);
 
-      // Combine all data from previous steps with the new media data
-      const finalProfileData = {
-        ...profileData,
-        media: urls,
-        media_paths: paths,
-        avatar_url: urls[0] || null,
-        avatar_path: paths[0] || null,
-        avatar_index: 0,
-        onboarding_complete: true,
-        updated_at: new Date().toISOString(),
-      };
+    try {
+      const urls = files.map((f) => f?.url).filter(Boolean);
+      const paths = files.map((f) => f?.path).filter(Boolean);
 
-      // --- CRITICAL DATA CLEANING ---
-      // This ensures all data is in the correct format for the database
-      if (finalProfileData.birthdate) {
-        try {
-          finalProfileData.birthdate = new Date(finalProfileData.birthdate).toISOString().slice(0, 10);
-        } catch {
-          console.error("Invalid birthdate format");
-          finalProfileData.birthdate = null;
-        }
-      }
-      // Add any other specific data cleaning from your old buildPayload function if needed
-      // For example, converting height to a consistent format, etc.
+      // --- Start with all the data collected so far ---
+      const finalProfileData = {
+        ...profileData,
+        media: urls,
+        media_paths: paths,
+        avatar_url: urls[0] || null,
+        avatar_path: paths[0] || null,
+        avatar_index: 0,
+        onboarding_complete: true,
+        updated_at: new Date().toISOString(),
+      };
 
-      const { error } = await supabase
-        .from("profiles")
-        .update(finalProfileData)
-        .eq("user_id", uid)
-        .select();
-      
-      if (error) throw error;
+      // --- CRITICAL DATA CLEANING & FORMATTING ---
+      // This section ensures all data matches the database schema.
 
-      await refreshProfile();
-      
-      navigate("/onboarding/finish", { replace: true });
+      // 1. Ensure date is in YYYY-MM-DD format
+      if (finalProfileData.birthdate) {
+        try {
+          finalProfileData.birthdate = new Date(finalProfileData.birthdate).toISOString().slice(0, 10);
+        } catch {
+          console.error("Invalid birthdate format");
+          finalProfileData.birthdate = null;
+        }
+      }
 
-    } catch (error) {
-      console.error("Failed to save final profile:", error);
-      alert("There was an error saving your profile. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      // 2. Ensure all array fields are actually arrays
+      const arrayFields = ['interested_in', 'ethnicity', 'family_plans', 'religion', 'schools'];
+      for (const field of arrayFields) {
+        if (finalProfileData[field] && !Array.isArray(finalProfileData[field])) {
+          // If the field exists but isn't an array, wrap it in one.
+          finalProfileData[field] = [finalProfileData[field]];
+        }
+      }
+
+      // --- End of Data Cleaning ---
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(finalProfileData)
+        .eq("user_id", uid)
+        .select();
+      
+      if (error) throw error;
+
+      await refreshProfile();
+      
+      // Navigate to the correct next page. If you have prompts/voice, go there.
+      // If media is the last data step, go to finish.
+      navigate("/onboarding/profile-prompts", { replace: true });
+
+    } catch (error) {
+      console.error("Failed to save final profile:", error);
+      alert(`There was an error saving your profile: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const ready = files.filter((f) => f).length >= 1;
 

@@ -24,7 +24,7 @@ export default function FamilyPlansPage() {
     if (!value) return;
     setProfileData(prev => ({
       ...prev,
-      family_plans: value,
+      family_plans: [value], // Wrap the value in an array
     }));
     navigate("/onboarding/hometown");
   };
