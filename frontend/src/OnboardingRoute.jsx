@@ -7,30 +7,34 @@ export default function OnboardingRoute({ children }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  // 1. While the context is loading, show nothing.
+  // --- Start of Debugging Logs ---
+  console.log("--- OnboardingRoute ---");
+  console.log("Path:", location.pathname);
+  console.log("Auth Loading:", loading);
+  console.log("User Exists:", !!user);
+  console.log("Profile Exists:", !!profile);
+  if (profile) {
+    console.log("Onboarding Complete:", profile.onboarding_complete);
+  }
+  // --- End of Debugging Logs ---
+
   if (loading) {
+    console.log("OnboardingRoute Decision: Return NULL (auth is loading)");
     return null;
   }
-
-  // 2. If loading is done and there is NO user, they cannot be here. Send to sign-in.
   if (!user) {
+    console.log("OnboardingRoute Decision: Redirect to /SignInPage (no user)");
     return <Navigate to="/SignInPage" state={{ from: location }} replace />;
   }
-  
-  // 3. [!CRITICAL FIX!]
-  // If the user is present but the profile is still loading,
-  // continue to show nothing. This prevents rendering the page with incomplete data.
   if (!profile) {
+    console.log("OnboardingRoute Decision: Return NULL (profile not loaded yet)");
     return null;
   }
-
-  // 4. If the profile IS loaded and onboarding is complete, they cannot go back.
-  // Send them to the main app homepage.
   if (profile.onboarding_complete) {
+    console.log("OnboardingRoute Decision: Redirect to /HomePage (onboarding is complete)");
     return <Navigate to="/HomePage" replace />;
   }
 
-  // 5. If all checks pass (loading is done, user and profile exist, onboarding is NOT complete),
-  // then it is safe to show the onboarding page.
+  console.log("OnboardingRoute Decision: Rendering onboarding page");
   return children;
 }
