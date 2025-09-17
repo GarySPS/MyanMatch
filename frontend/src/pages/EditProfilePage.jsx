@@ -534,12 +534,12 @@ const EDUCATION_OPTIONS_T = useMemo(() => [
 ], [t]);
 
 const POLITICAL_OPTIONS_T = useMemo(() => [
-  { value: "Liberal",             label: t("pol.opt.liberal") },
-  { value: "Moderate",            label: t("pol.opt.moderate") },
-  { value: "Conservative",        label: t("pol.opt.conservative") },
-  { value: "Not Political",       label: t("pol.opt.notPolitical") },
-  { value: "Other",               label: t("pol.opt.other") },
-  { value: "Prefer not to say",   label: t("pol.opt.na") },
+  { value: "Liberal",           label: t("pol.opt.liberal") },
+  { value: "Moderate",          label: t("pol.opt.moderate") },
+  { value: "Conservative",      label: t("pol.opt.conservative") },
+  { value: "Not political",     label: t("pol.opt.notPolitical") }, 
+  { value: "Other",             label: t("pol.opt.other") },
+  { value: "Prefer not to say", label: t("pol.opt.na") },
 ], [t]);
 
 const DRINK_OPTIONS = useMemo(() => [
@@ -557,10 +557,10 @@ const SMOKE_OPTIONS = useMemo(() => [
 ], [t]);
 
 const WEED_OPTIONS = useMemo(() => [
-  { value: "Yes", label: t("weed.opt.yes") },
-  { value: "Sometimes", label: t("weed.opt.sometimes") },
-  { value: "No", label: t("weed.opt.no") },
-  { value: "Prefer not to say", label: t("weed.opt.na") },
+  { value: "yes",               label: t("weed.opt.yes") },         
+  { value: "sometimes",         label: t("weed.opt.sometimes") }, 
+  { value: "no",                label: t("weed.opt.no") },  
+  { value: "na",                label: t("weed.opt.na") },  
 ], [t]);
 
 const DRUGS_OPTIONS = useMemo(() => [
@@ -1009,6 +1009,9 @@ const handleSave = async () => {
         updated_at: new Date().toISOString(),
     };
     delete safePayload.onboarding_complete;
+
+    delete safePayload.is_plus;
+    delete safePayload.is_x;
 
     // 3) Update the database
     const { error } = await supabase
