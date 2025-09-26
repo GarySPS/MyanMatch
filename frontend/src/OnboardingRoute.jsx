@@ -1,4 +1,4 @@
-// src/OnboardingRoute.jsx
+// src/OnboardingRoute.jsx (Corrected)
 
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -7,34 +7,24 @@ export default function OnboardingRoute({ children }) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  // --- Start of Debugging Logs ---
-  console.log("--- OnboardingRoute ---");
-  console.log("Path:", location.pathname);
-  console.log("Auth Loading:", loading);
-  console.log("User Exists:", !!user);
-  console.log("Profile Exists:", !!profile);
-  if (profile) {
-    console.log("Onboarding Complete:", profile.onboarding_complete);
-  }
-  // --- End of Debugging Logs ---
-
   if (loading) {
-    console.log("OnboardingRoute Decision: Return NULL (auth is loading)");
+    // Return null ONLY while the initial auth check is running.
     return null;
   }
+
   if (!user) {
-    console.log("OnboardingRoute Decision: Redirect to /SignInPage (no user)");
+    // If the user isn't logged in at all, send them to the sign-in page.
     return <Navigate to="/SignInPage" state={{ from: location }} replace />;
   }
-  if (!profile) {
-    console.log("OnboardingRoute Decision: Return NULL (profile not loaded yet)");
-    return null;
-  }
-  if (profile.onboarding_complete) {
-    console.log("OnboardingRoute Decision: Redirect to /HomePage (onboarding is complete)");
+
+  // FIX: We removed the `if (!profile)` check here.
+
+  if (profile && profile.onboarding_complete) {
+    // If the user somehow lands here but has already finished onboarding,
+    // send them to the main app page.
     return <Navigate to="/HomePage" replace />;
   }
 
-  console.log("OnboardingRoute Decision: Rendering onboarding page");
+  // If the user is logged in and hasn't completed onboarding, render the onboarding page.
   return children;
 }
