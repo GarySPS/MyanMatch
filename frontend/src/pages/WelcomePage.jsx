@@ -17,7 +17,7 @@ useEffect(() => {
         } else {
           // ...but their profile is NOT complete, FORCE them into onboarding.
           // This is the critical fix for this page.
-          navigate("/onboarding/terms", { replace: true });
+          navigate("/onboarding/language", { replace: true });
         }
       }
       // If no user is logged in, this effect does nothing, and the

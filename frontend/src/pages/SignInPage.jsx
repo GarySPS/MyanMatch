@@ -58,7 +58,7 @@ export default function SignInPage() {
       } else if (profile.onboarding_complete) {
         navigate(from || "/HomePage", { replace: true });
       } else {
-        navigate("/onboarding/terms", { replace: true });
+        navigate("/onboarding/language", { replace: true });
       }
     }
   }, [user, profile, authLoading, navigate, location.state]);

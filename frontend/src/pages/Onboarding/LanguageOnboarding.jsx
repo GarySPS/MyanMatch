@@ -48,7 +48,7 @@ export default function LanguageOnboarding() {
       await refreshProfile();
 
       // Continue onboarding
-      navigate("/onboarding/name", { replace: true });
+      navigate("/onboarding/terms", { replace: true });
 
     } catch (e) {
       console.error("Language update failed:", e);

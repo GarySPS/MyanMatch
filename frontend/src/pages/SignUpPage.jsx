@@ -46,7 +46,7 @@ export default function SignUpPage() {
       if (profile.onboarding_complete) {
         navigate("/HomePage", { replace: true });
       } else {
-        navigate("/onboarding/terms", { replace: true });
+        navigate("/onboarding/language", { replace: true });
       }
     }
   }, [user, profile, authLoading, navigate]);
@@ -110,7 +110,7 @@ export default function SignUpPage() {
       }
 
       // If both steps succeed, navigate to onboarding.
-      navigate("/onboarding/terms");
+      navigate("/onboarding/language");
 
     } catch (error) {
       console.error("Sign-up failed:", error.message);

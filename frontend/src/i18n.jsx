@@ -6,6 +6,43 @@ const I18nContext = createContext({ lang: "en", t: (k) => k, setLang: () => {} }
 
 const STRINGS = {
   en: {
+  "terms": {
+    "title": "MyanMatch Terms & Policies",
+    "subtitle": "MyanMatch is for making friends online. It’s suitable for all ages. Please read these short guidelines before continuing.",
+    "s1": {
+      "title": "1) Community Guidelines",
+      "r1": "Be kind and respectful. No bullying, hate speech, or harassment.",
+      "r2": "No nudity, sexual content, or adult services. This is not an 18+ app.",
+      "r3": "No threats, violence, scams, or impersonation.",
+      "r4": "Use your own photos and only post content you have rights to share.",
+      "r5": "Keep conversations friendly and inclusive of all ages and backgrounds."
+    },
+    "s2": {
+      "title": "2) Safety Rules",
+      "r1": "Protect personal info: don’t share address, school, or financial details.",
+      "r2": "Meet new people in public places and tell a trusted person if you plan to meet.",
+      "r3": "Report and block anyone who makes you uncomfortable.",
+      "r4": "If you are under 13, use MyanMatch only with a parent/guardian and never chat privately with adults you don’t know."
+    },
+    "s3": {
+      "title": "3) Content & Conduct We Don’t Allow",
+      "r1": "Adult/sexual content, requests for pics, or romantic pressure.",
+      "r2": "Spam, misleading links, fake giveaways, or phishing.",
+      "r3": "Hate speech, illegal activity, or promotion of self‑harm.",
+      "r4": "Buying/selling accounts or using automation/bots."
+    },
+    "s4": {
+      "title": "4) Privacy Policy (Short)",
+      "r1": "We collect basic profile data (name, age range, photos), app usage, and optional location (city/township) to improve matches and safety.",
+      "r2": "Your precise GPS is not shown to others; only a city/township label may be shown.",
+      "r3": "We don’t sell your personal data. We may use trusted providers to run the app (e.g., storage/analytics) under confidentiality.",
+      "r4": "You can request to download or delete your data via Settings."
+    },
+    "agree": {
+      "checkbox": "I’ve read and agree to the Terms, Privacy, Cookies, and Safety rules above. I will use MyanMatch respectfully.",
+      "button": "Agree & Continue"
+    }
+  },
     "nav.viewProfile": "View Profile",
     "nav.editProfile": "Edit Profile",
     "nav.verify": "Verify Identity",
@@ -786,6 +823,43 @@ const STRINGS = {
     },
   },
   my: {
+    "terms": {
+    "title": "MyanMatch စည်းမျဉ်းများနှင့် မူဝါဒများ",
+    "subtitle": "MyanMatch သည် သူငယ်ချင်းများဖွဲ့ရန်အတွက် ဖြစ်သည်။ အသက်အရွယ်မရွေး သင့်တော်ပါသည်။ မဆက်လက်မီ ဤလမ်းညွှန်ချက်တိုများကို ဖတ်ရှုပါ။",
+    "s1": {
+      "title": "၁) အသိုင်းအဝိုင်း လမ်းညွှန်ချက်များ",
+      "r1": "ကြင်နာပြီး လေးစားမှုရှိပါ။ အနိုင်ကျင့်ခြင်း၊ မုန်းတီးစကားပြောခြင်း သို့မဟုတ် နှောင့်ယှက်ခြင်းမပြုရ။",
+      "r2": "ဝတ်လစ်စားလစ်၊ လိင်ပိုင်းဆိုင်ရာ အကြောင်းအရာ သို့မဟုတ် လူကြီးဝန်ဆောင်မှုများ မပါဝင်ရ။ ၎င်းသည် 18+ အက်ပ်မဟုတ်ပါ။",
+      "r3": "ခြိမ်းခြောက်ခြင်း၊ အကြမ်းဖက်ခြင်း၊ လိမ်လည်ခြင်း သို့မဟုတ် အယောင်ဆောင်ခြင်းမပြုရ။",
+      "r4": "သင့်ကိုယ်ပိုင်ဓာတ်ပုံများကိုသာ အသုံးပြုပြီး မျှဝေခွင့်ရှိသော အကြောင်းအရာများကိုသာ တင်ပါ။",
+      "r5": "စကားပြောဆိုမှုများကို ဖော်ရွေစွာထားပြီး အသက်အရွယ်နှင့် နောက်ခံအားလုံးကို အားလုံးပါဝင်အောင် ပြုလုပ်ပါ။"
+    },
+    "s2": {
+      "title": "၂) လုံခြုံရေး စည်းမျဉ်းများ",
+      "r1": "ကိုယ်ရေးကိုယ်တာအချက်အလက်များကို ကာကွယ်ပါ- လိပ်စာ၊ ကျောင်း သို့မဟုတ် ငွေကြေးဆိုင်ရာအသေးစိတ်အချက်အလက်များကို မမျှဝေပါနှင့်။",
+      "r2": "လူသစ်များနှင့် အများပြည်သူဆိုင်ရာနေရာများတွင် တွေ့ဆုံပြီး တွေ့ဆုံရန်စီစဉ်ထားပါက ယုံကြည်ရသောသူတစ်ဦးကို ပြောပြပါ။",
+      "r3": "သင့်ကို မသက်မသာဖြစ်စေသူတိုင်းကို တိုင်ကြားပြီး ပိတ်ဆို့ပါ။",
+      "r4": "သင်သည် အသက် ၁၃ နှစ်အောက်ဖြစ်ပါက၊ MyanMatch ကို မိဘ/အုပ်ထိန်းသူနှင့်အတူသာ အသုံးပြုပြီး သင်မသိသော လူကြီးများနှင့် သီးသန့်စကားမပြောပါနှင့်။"
+    },
+    "s3": {
+      "title": "၃) ကျွန်ုပ်တို့ ခွင့်မပြုသော အကြောင်းအရာနှင့် အပြုအမူ",
+      "r1": "လူကြီး/လိင်ပိုင်းဆိုင်ရာ အကြောင်းအရာ၊ ဓာတ်ပုံတောင်းဆိုမှုများ သို့မဟုတ် ရိုမန်းတစ်ဖိအားပေးမှုများ။",
+      "r2": "အမှိုက်များ၊ လမ်းလွှဲစေသော လင့်ခ်များ၊ အတုအယောင်လက်ဆောင်များ သို့မဟုတ် phishing များ။",
+      "r3": "မုန်းတီးစကားပြောခြင်း၊ တရားမဝင်လုပ်ဆောင်မှု သို့မဟုတ် မိမိကိုယ်ကို အန္တရာယ်ပြုမှုကို အားပေးခြင်း။",
+      "r4": "အကောင့်များ ဝယ်ခြင်း/ရောင်းခြင်း သို့မဟုတ် အလိုအလျောက်စနစ်/ဘော့တ်များ အသုံးပြုခြင်း။"
+    },
+    "s4": {
+      "title": "၄) ကိုယ်ရေးကိုယ်တာ မူဝါဒ (အကျဉ်း)",
+      "r1": "သင့်တော်သောသူများနှင့် ချိတ်ဆက်ပေးနိုင်ရန်နှင့် လုံခြုံရေးတိုးတက်စေရန်အတွက် အခြေခံပရိုဖိုင်အချက်အလက်များ (အမည်၊ အသက်၊ ဓာတ်ပုံ)၊ အက်ပ်အသုံးပြုမှုနှင့် တည်နေရာ (မြို့/မြို့နယ်) ကို စုဆောင်းပါသည်။",
+      "r2": "သင်၏ တိကျသော GPS တည်နေရာကို အခြားသူများအား မပြသပါ၊ မြို့/မြို့နယ် အညွှန်းကိုသာ ပြသနိုင်ပါသည်။",
+      "r3": "ကျွန်ုပ်တို့သည် သင်၏ကိုယ်ရေးကိုယ်တာအချက်အလက်များကို မရောင်းချပါ။ အက်ပ်လည်ပတ်ရန်အတွက် ယုံကြည်ရသော ဝန်ဆောင်မှုပေးသူများ (ဥပမာ- သိုလှောင်မှု/သုံးသပ်ချက်) ကို လျှို့ဝှက်စွာ အသုံးပြုနိုင်ပါသည်။",
+      "r4": "ဆက်တင်များမှတစ်ဆင့် သင်၏ဒေတာကို ဒေါင်းလုဒ်လုပ်ရန် သို့မဟုတ် ဖျက်ရန် တောင်းဆိုနိုင်သည်။"
+    },
+    "agree": {
+      "checkbox": "MyanMatch ၏ စည်းမျဉ်းများ၊ ကိုယ်ရေးကိုယ်တာ၊ ကွတ်ကီးနှင့် လုံခြုံရေးဆိုင်ရာ စည်းကမ်းများကို ဖတ်ရှုပြီးဖြစ်ကြောင်း သဘောတူပါသည်။ MyanMatch ကို လေးစားစွာ အသုံးပြုပါမည်။",
+      "button": "သဘောတူပြီး ဆက်လက်လုပ်ဆောင်ပါ"
+    }
+  },
     "nav.viewProfile": "ပရိုဖိုင် ကြည့်ရန်",
     "nav.editProfile": "ပရိုဖိုင် ပြင်ဆင်ရန်",
     "nav.verify": "အကောင့်အစစ် မှတ်ပုံတင်ခြင်း",
