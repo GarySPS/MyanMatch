@@ -6,22 +6,24 @@ export default function WelcomePage() {
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
 
-  useEffect(() => {
-    // Only run the redirect logic AFTER loading is fully complete.
-    if (!loading) {
-      // If a user and a full profile exist, redirect them appropriately.
-      if (user && profile) {
-        if (profile.onboarding_complete) {
-          navigate("/HomePage", { replace: true });
-        } else {
-          // This handles logged-in users who haven't finished onboarding.
-          navigate("/onboarding/terms", { replace: true });
-        }
-      }
-      // If there is no user, or a user without a profile, this effect does nothing.
-      // The Welcome Page content below will be shown, allowing them to sign in.
-    }
-  }, [user, profile, loading, navigate]);
+useEffect(() => {
+    // Only run the redirect logic AFTER loading is fully complete.
+    if (!loading) {
+      // If a user is logged in...
+      if (user) {
+        // ...and their profile is complete, send them to the main app.
+        if (profile && profile.onboarding_complete) {
+          navigate("/HomePage", { replace: true });
+        } else {
+          // ...but their profile is NOT complete, FORCE them into onboarding.
+          // This is the critical fix for this page.
+          navigate("/onboarding/terms", { replace: true });
+        }
+      }
+      // If no user is logged in, this effect does nothing, and the
+      // public welcome page content below is correctly shown.
+    }
+  }, [user, profile, loading, navigate]);
 
   // This is the loading screen. It will only show while the AuthContext is
   // actively trying to determine the user's status.

@@ -17,8 +17,7 @@ export default function OnboardingRoute({ children }) {
     return <Navigate to="/SignInPage" state={{ from: location }} replace />;
   }
 
-  // FIX: We removed the `if (!profile)` check here.
-
+  // This check is now safer and handles the case where profile might be null.
   if (profile && profile.onboarding_complete) {
     // If the user somehow lands here but has already finished onboarding,
     // send them to the main app page.
