@@ -1,4 +1,4 @@
-// The new, corrected src/context/OnboardingContext.jsx
+//src/context/OnboardingContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 // This is a custom hook that combines useState with localStorage for persistence.

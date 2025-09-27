@@ -1,3 +1,5 @@
+// src/context/AuthContext.jsx
+
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 
@@ -7,7 +9,8 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial auth check ONLY
+  const [isRefreshing, setIsRefreshing] = useState(false); // [!ADD!] New state for refreshes
 
   const fetchProfile = useCallback(async (user) => {
     if (!user) return null;
@@ -26,64 +29,65 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(true);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        try {
-          const currentUser = session?.user ?? null;
-          setSession(session);
-          setUser(currentUser);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        try {
+          const currentUser = session?.user ?? null;
+          setSession(session);
+          setUser(currentUser);
 
-          if (currentUser) {
-            const fetchedProfile = await fetchProfile(currentUser);
-            setProfile(fetchedProfile);
-            
-            if (fetchedProfile) {
-              const cache = {
-                id: fetchedProfile.user_id,
-                user_id: fetchedProfile.user_id,
-                username: fetchedProfile.username,
-                first_name: fetchedProfile.first_name,
-                last_name: fetchedProfile.last_name,
-                avatar_url: fetchedProfile.avatar_url,
-                onboarding_complete: !!fetchedProfile.onboarding_complete,
-                is_admin: !!fetchedProfile.is_admin,
-                verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
-              };
-              localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-            } else {
-              localStorage.removeItem("myanmatch_user");
-            }
-          } else {
-            setProfile(null);
-            localStorage.removeItem("myanmatch_user");
-          }
-        } catch (error) {
-            console.error("Critical error in AuthProvider:", error);
-            // In case of an error, clear everything to be safe
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            localStorage.removeItem("myanmatch_user");
-        } finally {
-            // This will now run no matter what, fixing the stuck loading screen
-            setLoading(false);
-        }
-      }
-    );
+          if (currentUser) {
+            const fetchedProfile = await fetchProfile(currentUser);
+            setProfile(fetchedProfile);
+            
+            if (fetchedProfile) {
+              const cache = {
+                id: fetchedProfile.user_id,
+                user_id: fetchedProfile.user_id,
+                username: fetchedProfile.username,
+                first_name: fetchedProfile.first_name,
+                last_name: fetchedProfile.last_name,
+                avatar_url: fetchedProfile.avatar_url,
+                onboarding_complete: !!fetchedProfile.onboarding_complete,
+                is_admin: !!fetchedProfile.is_admin,
+                verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
+              };
+              localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+            } else {
+              localStorage.removeItem("myanmatch_user");
+            }
+          } else {
+            setProfile(null);
+            localStorage.removeItem("myanmatch_user");
+          }
+        } catch (error) {
+            console.error("Critical error in AuthProvider:", error);
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            localStorage.removeItem("myanmatch_user");
+        } finally {
+            setLoading(false);
+        }
+      }
+    );
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
   
+  // [!START OF FIX 1!]
   const refreshProfile = useCallback(async () => {
     if (user) {
-      setLoading(true);
+      // Use the new isRefreshing state, not the global loading state
+      setIsRefreshing(true);
       const refreshed = await fetchProfile(user);
       setProfile(refreshed);
-      setLoading(false);
+      setIsRefreshing(false);
     }
   }, [user, fetchProfile]);
+  // [!END OF FIX 1!]
 
   const silentRefreshProfile = useCallback(async () => {
     if (user) {
@@ -97,13 +101,21 @@ export function AuthProvider({ children }) {
     user,
     profile,
     loading,
+    isRefreshing, // [!ADD!] Expose the new state
     refreshProfile,
     silentRefreshProfile,
+    // [!START OF FIX 2!]
     signOut: () => {
-      // Also clear local storage on sign out
-      localStorage.removeItem("myanmatch_user");
-      return supabase.auth.signOut();
-    },
+      // This is the primary fix for the logout freeze.
+      // It clears React state synchronously with local storage to prevent a race condition.
+      localStorage.removeItem("myanmatch_user");
+      localStorage.removeItem("onboardingProfile"); 
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      return supabase.auth.signOut();
+    },
+    // [!END OF FIX 2!]
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
