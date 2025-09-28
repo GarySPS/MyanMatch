@@ -741,8 +741,8 @@ export default function HomePage() {
     }, 3000);
   }
 
- const { user: me } = useAuth(); // Get the logged-in user's profile from the context
- const myId = me?.user_id;       // Get the user_id from the profile
+  const { profile } = useAuth(); // Get the logged-in user's PROFILE from the context
+  const myId = profile?.user_id; // Get the user_id from the PROFILE
 
   useEffect(() => {
     async function fetchProfiles() {
