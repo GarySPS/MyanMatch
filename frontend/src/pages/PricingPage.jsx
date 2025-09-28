@@ -33,7 +33,6 @@ export default function PricingPage() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [userId, setUserId] = useState(null);
   const [row, setRow] = useState(null);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
