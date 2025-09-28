@@ -149,7 +149,7 @@ function useLabels() {
 
 /* ------------ page ------------ */
 export default function DatingPreferencesPage() {
-  const { user: profile } = useAuth();
+  const { profile } = useAuth();
   const userId = profile?.user_id;
   const navigate = useNavigate();
   const { t, gender: Lg, relationship: Lrel, religion: Lrelg, politics: Lpol, family: Lfam, ethnicity: Leth, yn: Lyn, edu: Le } = useLabels();
