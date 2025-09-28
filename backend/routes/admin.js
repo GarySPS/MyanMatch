@@ -3,33 +3,55 @@
 const express = require('express');
 const router = express.Router();
 
-// [!FIXED!] This route now uses the correct Supabase admin function to get all users.
+// [!FIXED!] This route now fetches from both auth.users and public.profiles and merges them.
 router.get('/users', async (req, res) => {
   const supabase = req.supabase;
   try {
-    // Use the dedicated admin function to list all users securely
-    const { data, error } = await supabase.auth.admin.listUsers();
+    // Step 1: Get the list of all users from Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000, // Adjust if you have more than 1000 users
+    });
+    if (authError) throw authError;
 
-    if (error) throw error;
+    const authUsers = authData.users;
+    if (!authUsers || authUsers.length === 0) {
+      return res.json({ users: [] });
+    }
+    const userIds = authUsers.map(u => u.id);
 
-    // The listUsers function returns an object with a 'users' property.
-    // We map the results to create the fields your frontend expects.
-    const users = data.users.map(u => ({
-      id: u.id,
-      username: u.user_metadata?.username || null,
-      email: u.email,
-      short_id: u.user_metadata?.short_id || null,
-      is_admin: u.role === 'service_role' || u.user_metadata?.is_admin === true,
-      created_at: u.created_at,
-    }));
+    // Step 2: Get the corresponding profiles for these users
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, username, short_id') // We only need these specific columns
+      .in('user_id', userIds);
+    if (profilesError) throw profilesError;
 
-    res.json({ users: users || [] });
+    // Create a map of profiles for easy and fast lookup
+    const profilesMap = new Map(profilesData.map(p => [p.user_id, p]));
+
+    // Step 3: Merge the auth data with the profile data
+    const mergedUsers = authUsers.map(u => {
+      const profile = profilesMap.get(u.id) || {}; // Find the matching profile
+      return {
+        id: u.id,
+        username: profile.username || null,        // <-- Get from profiles table
+        email: u.email,
+        short_id: profile.short_id || null,      // <-- Get from profiles table
+        is_admin: u.role === 'service_role' || u.user_metadata?.is_admin === true,
+        created_at: u.created_at,
+      };
+    });
+    
+    // Sort by creation date like before
+    mergedUsers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json({ users: mergedUsers });
   } catch (e) {
     console.error('Admin user list error:', e);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
-
 
 // GET /api/admin/reports (This one is fine, no changes needed)
 router.get('/reports', async (req, res) => {
