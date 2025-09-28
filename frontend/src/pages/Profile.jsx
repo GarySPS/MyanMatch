@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import PlusBadge from "../components/PlusBadge";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 const BOOST_PRICE = 3000;
 const fmtCoins = (n) => `${Number(n || 0).toLocaleString()} coins`;
@@ -15,184 +16,84 @@ const fmtTime = (d) =>
     day: "numeric",
   });
 
-function normalizePlan(p) {
+  function normalizePlan(p) {
   const s = String(p || "").toLowerCase().trim();
   if (["plus", "myanmatch+", "myanmatch plus", "myanmatchplus"].includes(s)) return "plus";
   if (["x", "myanmatchx", "myanmatch x"].includes(s)) return "x";
   return "free";
 }
 
-function getLocalUser() {
-  try {
-    return JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-  } catch {
-    return {};
-  }
-}
-
 export default function Profile() {
   const navigate = useNavigate();
-  const { t } = useI18n(); // ← i18n
+  const { t } = useI18n();
 
-  const [loading, setLoading] = useState(true);
+  // ✅ 1. Get EVERYTHING from the AuthContext. This is the single source of truth.
+  const { profile, signOut, refreshProfile } = useAuth();
+
   const [busy, setBusy] = useState(false);
-
-  const [uiName, setUiName] = useState("You");
-  const [isVerified, setIsVerified] = useState(false);
-  const [isPlus, setIsPlus] = useState(false);
-  const [language, setLanguage] = useState("en");
-
-  const [coin, setCoin] = useState(0);
-  const [boostActive, setBoostActive] = useState(false);
-  const [boostUntil, setBoostUntil] = useState(null);
-
   const [msg, setMsg] = useState("");
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const [usersId, setUsersId] = useState(null);
+  // ✅ 2. Derive all user data directly from the `profile` object from context.
+  const userId = profile?.user_id;
+  const uiName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || "You";
+  const coin = Number(profile?.coin ?? 0);
+  const language = profile?.language || "en";
+  const planNorm = normalizePlan(profile?.membership_plan);
 
-  const [planNorm, setPlanNorm] = useState("free");
-  const [planExpiryISO, setPlanExpiryISO] = useState(null);
+  const boostUntil = profile?.boosted_until ? new Date(profile.boosted_until) : null;
+  const boostActive = !!boostUntil && boostUntil.getTime() > Date.now();
 
-  const local = useMemo(() => getLocalUser(), []);
-  const userId = local.user_id || local.id || null;
+  const canBoost = coin >= BOOST_PRICE && !boostActive;
 
-
-
-
-  async function reload() {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select(
-        "id,user_id,first_name,last_name,is_verified,is_plus,coin,membership_plan,boosted_until,language"
-      )
-      .or(`user_id.eq."${userId}",id.eq."${userId}"`)
-      .maybeSingle();
-
-    const uid = prof?.user_id || userId;
-    setUsersId(uid);
-
-    const first = prof?.first_name || local?.first_name || "";
-    const last = prof?.last_name || local?.last_name || "";
-    setUiName(((first + " " + last).trim()) || "You");
-    setIsVerified(!!prof?.is_verified);
-const norm = normalizePlan(prof?.membership_plan);
-setPlanNorm(norm);
-// premium features available for both plus and x (keep your behavior)
-setIsPlus(norm === "plus" || norm === "x");
-
-// optional expiry for later use if you want
-setPlanExpiryISO(prof?.membership_expires_at ?? null);
-
-    setCoin(Number(prof?.coin ?? 0));
-    setLanguage(prof?.language || "en");
-
-    const until = prof?.boosted_until ? new Date(prof.boosted_until) : null;
-    const active = !!until && until.getTime() > Date.now();
-    setBoostActive(active);
-    setBoostUntil(until?.toISOString() ?? null);
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    let ok = true;
-    (async () => {
-      setLoading(true);
-      await reload();
-      if (ok) setLoading(false);
-    })();
-    return () => {
-      ok = false;
-    };
-  }, [userId]);
-
-  // initialize language quickly from localStorage to avoid flicker
-  useEffect(() => {
-    if (local?.language) setLanguage(local.language);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // ✅ 3. The `handleBoost` function is simplified. It calls `refreshProfile` on success.
   async function handleBoost() {
     setMsg("");
-    if (!userId) {
-      setMsg("Please sign in first.");
-      return;
-    }
-    if (busy) return;
+    if (!userId || busy) return;
 
-    if (boostActive && boostUntil) {
-      setMsg(`Boost already active until ${fmtTime(boostUntil)}.`);
-      setShowBoostModal(false);
+    if (boostActive) {
+      setMsg(t("nav.boostActive", { time: fmtTime(boostUntil) }));
       return;
     }
-    if ((Number(coin) || 0) < BOOST_PRICE) {
-      setMsg(
-        `Not enough coins. Need ${fmtCoins(BOOST_PRICE)} (you have ${fmtCoins(
-          coin
-        )}).`
-      );
+    if (coin < BOOST_PRICE) {
+      setMsg(`Not enough coins. Need ${fmtCoins(BOOST_PRICE)}.`);
       return;
     }
 
     setBusy(true);
     try {
-      let uid = usersId || userId;
       const { error } = await supabase.rpc("activate_profile_boost", {
-        p_user_id: uid,
+        p_user_id: userId,
         p_price: BOOST_PRICE,
       });
       if (error) throw error;
 
-      await reload();
-      setMsg(
-        "🚀 Boost activated! You’ll appear on Users Of The Day for 24 hours."
-      );
+      await refreshProfile(); // Refresh the central auth state
       setShowBoostModal(false);
+      
     } catch (e) {
       setMsg(e.message || "Boost failed. Please try again.");
     } finally {
       setBusy(false);
     }
   }
-
-  async function doLocalSignOut() {
-    try {
-      await supabase.auth.signOut();
-    } catch {}
-    try {
-      localStorage.removeItem("myanmatch_user");
-      localStorage.removeItem("myanmatch_token");
-      localStorage.removeItem("onboarding_state");
-      localStorage.removeItem("myanmatch_profile_draft");
-      localStorage.removeItem("myanmatch_plus");
-      localStorage.removeItem("myanmatch_cache");
-    } catch {}
-    navigate("/");
-  }
-
-  function handleLogout() {
+  
+  // ✅ 4. The Logout function now uses the CORRECT `signOut` from context.
+  async function handleLogout() {
     if (busy) return;
-    setShowLogoutModal(true);
+    setBusy(true);
+    try {
+      await signOut();
+      navigate("/"); // Navigate after sign-out is complete
+    } catch (error) {
+      console.error("Sign out failed", error);
+    } finally {
+      setBusy(false);
+      setShowLogoutModal(false);
+    }
   }
-
-  const canBoost =
-    (Number(coin) || 0) >= BOOST_PRICE && !(boostActive && boostUntil);
-
-  /* ---------- UI ---------- */
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse w-72 h-8 rounded-full bg-white/10" />
-      </div>
-    );
-  }
+  
 
   return (
     <div className="relative min-h-dvh w-full text-white overflow-hidden">
@@ -294,7 +195,7 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
           <NavRow label={t("nav.acctSecurity")} icon="🛡️" onClick={() => navigate("/AccountSecurityPage")} />
           <NavDivider />
 
-          <NavRow label={t("nav.logout")} icon="🚪" onClick={handleLogout} />
+          <NavRow label={t("nav.logout")} icon="🚪" onClick={() => setShowLogoutModal(true)} />
           <NavRow label={t("nav.delete")} icon="🗑️" onClick={() => navigate("/DeleteAccount")} />
         </nav>
 
@@ -323,20 +224,13 @@ setPlanExpiryISO(prof?.membership_expires_at ?? null);
         />
       )}
 
-      {showLogoutModal && (
-        <LogoutModal
-          onClose={() => setShowLogoutModal(false)}
-          onConfirm={async () => {
-            setBusy(true);
-            try {
-              await doLocalSignOut();
-            } finally {
-              setBusy(false);
-            }
-          }}
-          busy={busy}
-        />
-      )}
+{showLogoutModal && (
+  <LogoutModal
+    onClose={() => setShowLogoutModal(false)}
+    onConfirm={handleLogout} // <-- Use the new, correct logout handler
+    busy={busy}
+  />
+)}
     </div>
   );
 }

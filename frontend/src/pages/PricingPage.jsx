@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import { FaCrown, FaBolt, FaUndo, FaInfinity, FaHeart, FaEye, FaFire } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 /** ---------- Config ---------- */
 const PROMO_ACTIVE = true; // toggle to false when promo ends
@@ -23,14 +24,6 @@ function normalizePlan(p) {
   return "free";
 }
 
-function getLocalUserId() {
-  try {
-    const u = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-    return u?.user_id || u?.id || null;
-  } catch {
-    return null;
-  }
-}
 const fmtCoins = (n) => `${Number(n || 0).toLocaleString()} coins`;
 const addDaysISO = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 const fmtDate = (iso) =>
@@ -82,10 +75,11 @@ export default function PricingPage() {
   );
 
   /** ---------- Load profile (+ auto-downgrade if expired) ---------- */
+  const { profile, refreshProfile } = useAuth();
+  const userId = profile?.user_id;
+
   useEffect(() => {
-    const id = getLocalUserId();
-    setUserId(id);
-    if (!id) {
+    if (!userId) { // <-- Use userId from the context
       setLoading(false);
       setMessage(t("pricing.msg.signInFirst"));
       return;
@@ -96,13 +90,13 @@ export default function PricingPage() {
       let { data, error } = await supabase
         .from("profiles")
         .select("id,user_id,coin,membership_plan,membership_expires_at")
-        .eq("user_id", id)
+        .eq("user_id", userId) // <-- Use userId from the context
         .maybeSingle();
 
       if (!data && error?.code === "PGRST116") {
         const ins = await supabase
           .from("profiles")
-          .insert({ user_id: id, coin: 0, membership_plan: "free", membership_expires_at: null })
+          .insert({ user_id: userId, coin: 0, membership_plan: "free", membership_expires_at: null }) 
           .select("id,user_id,coin,membership_plan,membership_expires_at")
           .maybeSingle();
         data = ins.data || null;
@@ -118,7 +112,7 @@ export default function PricingPage() {
         await supabase
           .from("profiles")
           .update({ membership_plan: "free", membership_expires_at: null })
-          .eq("user_id", id);
+          .eq("user_id", userId);
         data.membership_plan = "free";
         data.membership_expires_at = null;
       }
@@ -126,7 +120,7 @@ export default function PricingPage() {
       setRow(data || null);
       setLoading(false);
     })();
-  }, [t]);
+  }, [userId, t]);
 
   async function refresh() {
     if (!userId) return;

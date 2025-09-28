@@ -213,7 +213,7 @@ function SkeletonCard() {
 export default function ExplorePage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { user: me } = useAuth();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [boosted, setBoosted] = useState([]);
   const [banner, setBanner] = useState("");
@@ -329,7 +329,7 @@ const merged = (profiles || []).map((p) => ({
       <GiftSendModal
         open={giftOpen}
         onClose={() => setGiftOpen(false)}
-        senderId={me?.id}
+        senderId={profile?.user_id}
         receiverId={receiverId}
         onSent={() => {}}
       />

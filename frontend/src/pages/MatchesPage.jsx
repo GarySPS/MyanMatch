@@ -14,8 +14,8 @@ function normalizePlan(p) {
 }
 
 export default function MatchesPages() {
-  const { user: me } = useAuth();
-  const myId = me?.user_id;
+  const { profile } = useAuth();
+  const myId = profile?.user_id;
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -180,8 +180,7 @@ return {
   }
 
   async function handleLikeBack(u) {
-    const me = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-    const meId = me.user_id || me.id;
+  const meId = myId;
     if (!meId) return;
 
     try {

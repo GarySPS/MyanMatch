@@ -4,16 +4,9 @@ import { supabase } from "../supabaseClient";
 import { FaBolt, FaSearch } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
 
 /* ---------- utils ---------- */
-function getLocalUser() {
-  try {
-    return JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-  } catch {
-    return {};
-  }
-}
-
 function VerifiedBadge({ className = "" }) {
   return (
     <span
@@ -89,6 +82,8 @@ function resolveAvatar(profile) {
 export default function ChatPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { profile } = useAuth();
+  const myId = profile?.user_id;
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -105,8 +100,6 @@ export default function ChatPage() {
     async function fetchMatches() {
       setLoading(true);
 
-      const local = getLocalUser();
-      const myId = local.user_id || local.id;
       if (!myId) {
         if (alive) {
           setMatches([]);
@@ -212,7 +205,7 @@ const rows = (profs || []).map((p) => {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [myId]);
 
   /* ---------- loading skeleton ---------- */
   if (loading) {

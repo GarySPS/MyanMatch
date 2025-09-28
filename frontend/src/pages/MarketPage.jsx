@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import clsx from "clsx";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext"; 
 
 const BUCKET = "gift-images";
 
@@ -145,8 +146,8 @@ export default function MarketPage() {
   const [sellingKey, setSellingKey] = useState(""); // gift_id or gift_id:all
 
   // user
-  const user = JSON.parse(localStorage.getItem("myanmatch_user") || "{}");
-  const userId = user.user_id || user.id;
+const { profile } = useAuth();
+const userId = profile?.user_id;
 
   // derived
   const groupedInventory = useMemo(() => groupGiftRows(myGifts), [myGifts]);
