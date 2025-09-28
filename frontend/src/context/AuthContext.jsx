@@ -28,54 +28,118 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => {
-    setLoading(true);
+useEffect(() => {
+  let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        try {
-          const currentUser = session?.user ?? null;
-          setSession(session);
-          setUser(currentUser);
+  async function init() {
+    try {
+      setLoading(true);
 
-          if (currentUser) {
-            const fetchedProfile = await fetchProfile(currentUser);
-            setProfile(fetchedProfile);
-            
-            if (fetchedProfile) {
-              const cache = {
-                id: fetchedProfile.user_id,
-                user_id: fetchedProfile.user_id,
-                username: fetchedProfile.username,
-                first_name: fetchedProfile.first_name,
-                last_name: fetchedProfile.last_name,
-                avatar_url: fetchedProfile.avatar_url,
-                onboarding_complete: !!fetchedProfile.onboarding_complete,
-                is_admin: !!fetchedProfile.is_admin,
-                verified: !!currentUser.email_confirmed_at || (currentUser.email && !currentUser.email.endsWith('@myanmatch.user')),
-              };
-              localStorage.setItem("myanmatch_user", JSON.stringify(cache));
-            } else {
-              localStorage.removeItem("myanmatch_user");
-            }
-          } else {
-            setProfile(null);
-            localStorage.removeItem("myanmatch_user");
-          }
-        } catch (error) {
-            console.error("Critical error in AuthProvider:", error);
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            localStorage.removeItem("myanmatch_user");
-        } finally {
-            setLoading(false);
-        }
-      }
-    );
+      // 1) Seed state immediately on mount to avoid infinite "loading"
+      const { data: sessionData, error: sessErr } = await supabase.auth.getSession();
+      if (sessErr) console.error("getSession error:", sessErr);
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+      const currentSession = sessionData?.session ?? null;
+      const currentUser = currentSession?.user ?? null;
+
+      if (!mounted) return;
+
+      setSession(currentSession);
+      setUser(currentUser);
+
+      if (currentUser) {
+        const fetchedProfile = await fetchProfile(currentUser);
+        if (!mounted) return;
+        setProfile(fetchedProfile);
+
+        if (fetchedProfile) {
+          const cache = {
+            id: fetchedProfile.user_id,
+            user_id: fetchedProfile.user_id,
+            username: fetchedProfile.username,
+            first_name: fetchedProfile.first_name,
+            last_name: fetchedProfile.last_name,
+            avatar_url: fetchedProfile.avatar_url,
+            onboarding_complete: !!fetchedProfile.onboarding_complete,
+            is_admin: !!fetchedProfile.is_admin,
+            verified:
+              !!currentUser.email_confirmed_at ||
+              (currentUser.email && !currentUser.email.endsWith("@myanmatch.user")),
+          };
+          localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+        } else {
+          localStorage.removeItem("myanmatch_user");
+        }
+      } else {
+        setProfile(null);
+        localStorage.removeItem("myanmatch_user");
+      }
+    } catch (error) {
+      console.error("Critical error in AuthProvider (init):", error);
+      if (!mounted) return;
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      localStorage.removeItem("myanmatch_user");
+    } finally {
+      if (mounted) setLoading(false); // IMPORTANT: ensure loading ends on first mount
+    }
+  }
+
+  init();
+
+  // 2) Keep listening for later auth changes
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (_event, session) => {
+      try {
+        const currentUser = session?.user ?? null;
+        setSession(session ?? null);
+        setUser(currentUser);
+
+        if (currentUser) {
+          const fetchedProfile = await fetchProfile(currentUser);
+          setProfile(fetchedProfile);
+
+          if (fetchedProfile) {
+            const cache = {
+              id: fetchedProfile.user_id,
+              user_id: fetchedProfile.user_id,
+              username: fetchedProfile.username,
+              first_name: fetchedProfile.first_name,
+              last_name: fetchedProfile.last_name,
+              avatar_url: fetchedProfile.avatar_url,
+              onboarding_complete: !!fetchedProfile.onboarding_complete,
+              is_admin: !!fetchedProfile.is_admin,
+              verified:
+                !!currentUser.email_confirmed_at ||
+                (currentUser.email && !currentUser.email.endsWith("@myanmatch.user")),
+            };
+            localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+          } else {
+            localStorage.removeItem("myanmatch_user");
+          }
+        } else {
+          setProfile(null);
+          localStorage.removeItem("myanmatch_user");
+        }
+      } catch (error) {
+        console.error("Critical error in AuthProvider (onAuthStateChange):", error);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        localStorage.removeItem("myanmatch_user");
+      } finally {
+        // Optional: keep this, but init() already set loading to false.
+        setLoading(false);
+      }
+    }
+  );
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, [fetchProfile]);
   
   // [!START OF FIX 1!]
   const refreshProfile = useCallback(async () => {
