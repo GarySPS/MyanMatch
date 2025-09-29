@@ -434,16 +434,121 @@ function GiftSendModal({ open, onClose, senderId, receiverId, onSent, presetComm
   const [comment, setComment] = useState(presetComment || "");
 
   useEffect(() => {
-    if (!open || !senderId) return;
-    setSelectedGift(null);
-    setComment(presetComment || "");
-    (async () => {
+    async function fetchProfiles() {
+      // --- START OF NEW LOGS ---
+      console.log("🕵️‍♂️ HomePage: Starting fetchProfiles function...");
       setLoading(true);
-      const { data, error } = await supabase.from("user_gifts").select("*").eq("user_id", senderId);
-      setInventory(error ? [] : (data || []));
-      setLoading(false);
-    })();
-  }, [open, senderId, presetComment]);
+
+      if (!myId) {
+        console.warn("HomePage: myId is missing, stopping fetch.");
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        console.log("HomePage: 1. Fetching my own profile ('me')...");
+        const { data: me, error: meError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", myId)
+          .maybeSingle();
+        if (meError) throw meError;
+        
+        const planStr = (me?.membership_plan || "free").toLowerCase();
+        setPlan(planStr);
+
+        console.log("HomePage: 2. Fetching preferences...");
+        const { data: prefsRow, error: prefsError } = await supabase
+          .from("preferences")
+          .select("*")
+          .eq("user_id", myId)
+          .maybeSingle();
+        if (prefsError) throw prefsError;
+
+        const prefs = { age_min: 18, age_max: 80, genders: [], distance_km: 100, ...(prefsRow || {}) };
+        
+        let wantGenders = coerceArray(prefs.genders).map(normalizeGenderKey).filter(Boolean);
+        if (wantGenders.length === 0 && me?.interested_in) {
+          const interested = typeof me.interested_in === 'string' && me.interested_in.startsWith('[')
+            ? JSON.parse(me.interested_in)
+            : me.interested_in;
+          wantGenders = coerceArray(interested).map(normalizeGenderKey).filter(Boolean);
+        }
+        
+        console.log("HomePage: 3. Fetching passes...");
+        const { data: passes, error: passesError } = await supabase.from("pass").select("to_user_id").eq("from_user_id", myId);
+        if(passesError) throw passesError;
+        
+        const passedIds = (passes ?? []).map(p => p.to_user_id);
+
+        console.log("HomePage: 4. Fetching likes...");
+        const { data: likes, error: likesError } = await supabase.from("likes").select("to_user_id").eq("from_user_id", myId);
+        if(likesError) throw likesError;
+
+        const likedIds = (likes ?? []).map(l => l.to_user_id);
+
+        const excludeIds = Array.from(new Set([myId, ...passedIds, ...likedIds]));
+
+        console.log("HomePage: 5. Building and running main query...");
+        let q = supabase
+          .from("profiles")
+          .select("*")
+          .eq('is_bot', false)
+          .not("user_id", "in", `(${excludeIds.join(",")})`);
+
+        if (wantGenders.length > 0) q = q.in("gender", wantGenders);
+        if (prefs.age_min) q = q.gte('age', prefs.age_min);
+        if (prefs.age_max) q = q.lte('age', prefs.age_max);
+        
+        const { data, error: queryError } = await q;
+        if(queryError) throw queryError;
+        
+        console.log("HomePage: 6. All queries successful. Now processing data...");
+
+        const myAge = getAge(me);
+        const myCoordProbe = getCoord(me || {});
+        const myCoord = myCoordProbe.ok ? { lat: myCoordProbe.lat, lng: myCoordProbe.lng } : null;
+        const withDist = (data || []).map((u) => {
+          const c = getCoord(u);
+          const d = (myCoord && c.ok) ? distanceKm(myCoord.lat, myCoord.lng, c.lat, c.lng) : Infinity;
+          return { ...u, _distKm: d };
+        });
+        
+        const filtered = withDist.filter((u) => matchesPreferences(u, prefs, myAge));
+
+        const sorted = filtered.sort((a, b) => {
+            const aAge = getAge(a);
+            const bAge = getAge(b);
+            const my = Number.isFinite(myAge) ? myAge : 200;
+            const aDelta = Number.isFinite(aAge) ? Math.abs(aAge - my) : Infinity;
+            const bDelta = Number.isFinite(bAge) ? Math.abs(bAge - my) : Infinity;
+            const ageCmp = aDelta - bDelta;
+            if (ageCmp !== 0) return ageCmp;
+            return a._distKm - b._distKm;
+        });
+
+        setIndex(0);
+        setProfiles(sorted);
+
+      } catch (error) {
+        console.error("⛔️ HomePage failed to fetch data:", error);
+      } finally {
+        setLoading(false);
+        console.log("✅ HomePage: Finished fetchProfiles function.");
+      }
+    }
+
+    fetchProfiles();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProfiles();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [myId]);
 
   async function handleSend() {
     if (!selectedGift || loading) return;
@@ -484,7 +589,6 @@ function GiftSendModal({ open, onClose, senderId, receiverId, onSent, presetComm
   }
 
   if (!open) return null;
-
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center">
