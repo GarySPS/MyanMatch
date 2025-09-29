@@ -1,18 +1,14 @@
-// The updated code for your main.jsx file
-
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import "./globals.css";
+import "./index.css"; // Changed from globals.css to index.css
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext"; 
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
-  </StrictMode>
+  <BrowserRouter>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </BrowserRouter>
 );
