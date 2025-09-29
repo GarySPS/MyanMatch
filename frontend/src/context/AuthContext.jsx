@@ -54,7 +54,9 @@ export function AuthProvider({ children }) {
           
           if (currentUser) {
             // If there's a user, fetch their profile from the database
+            console.log(`⏳ Attempting to fetch profile for user: ${currentUser.id}`);
             const fetchedProfile = await fetchProfile(currentUser);
+            console.log("✅ Profile fetch completed. Profile data:", fetchedProfile);
             setProfile(fetchedProfile);
 
             // Your caching logic is good, we'll keep it
