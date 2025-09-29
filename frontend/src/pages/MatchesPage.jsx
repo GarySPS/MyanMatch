@@ -30,7 +30,7 @@ export default function MatchesPages() {
     async function fetchLikes() {
       setLoading(true);
 
-      if (!userId) {
+      if (!myId) {
         if (mounted) {
           setLikes([]);
           setShowOnboarding(true);
@@ -44,7 +44,7 @@ try {
   const { data: me } = await supabase
     .from("profiles")
     .select("is_plus,membership_plan,membership_expires_at")
-    .eq("user_id", userId)
+    eq("user_id", myId)
     .single();
 
   const norm = normalizePlan(me?.membership_plan);
@@ -64,7 +64,7 @@ try {
       const { data: incoming, error: inErr } = await supabase
         .from("likes")
         .select("id,from_user_id,created_at,type,comment,is_visible")
-        .eq("to_user_id", userId)
+        .eq("to_user_id", myId)
         .eq("is_visible", true)
         .order("created_at", { ascending: false });
 
@@ -83,7 +83,7 @@ try {
  const { data: outgoingToThem } = await supabase
    .from("likes")
    .select("to_user_id,type,is_visible")
-   .eq("from_user_id", userId)
+   .eq("from_user_id", myId)
    .in("to_user_id", fromIds)
    .eq("is_visible", true);
    // Optional (stricter):
@@ -180,12 +180,11 @@ return {
   }
 
   async function handleLikeBack(u) {
-  const meId = myId;
-    if (!meId) return;
+    if (!myId) return; // <-- Use myId from context directly
 
     try {
       await supabase.from("likes").insert({
-        from_user_id: meId,
+        from_user_id: myId, // <-- Use myId from context
         to_user_id: u.id,
         type: "like",
         is_visible: true,
