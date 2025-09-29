@@ -58,11 +58,12 @@ useEffect(() => {
       setUser(currentUser);
 
       if (currentUser) {
-        const fetchedProfile = await fetchProfile(currentUser);
-        if (!mounted) return;
-        setProfile(fetchedProfile);
+  const fetchedProfile = await fetchProfile(currentUser);
 
-        if (fetchedProfile) {
+  if (!mounted) return;
+  setProfile(fetchedProfile);
+
+  if (fetchedProfile) {
           const cache = {
             id: fetchedProfile.user_id,
             user_id: fetchedProfile.user_id,
@@ -99,12 +100,15 @@ useEffect(() => {
   init();
 
   // 2) Keep listening for later auth changes
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (_event, session) => {
-      try {
-        const currentUser = session?.user ?? null;
-        setSession(session ?? null);
-        setUser(currentUser);
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  async (_event, session) => {
+    // 🔥 ADD THIS LINE - CRITICAL FIX 🔥
+    if (!mounted) return;
+    
+    try {
+      const currentUser = session?.user ?? null;
+      setSession(session ?? null);
+      setUser(currentUser);
 
         if (currentUser) {
           const fetchedProfile = await fetchProfile(currentUser);
