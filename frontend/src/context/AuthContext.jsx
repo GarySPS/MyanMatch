@@ -33,6 +33,7 @@ export function AuthProvider({ children }) {
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     } catch (error) {
+      console.error("⛔️ DATABASE ERROR in fetchProfile:", error);
       console.error("Error fetching profile:", error);
       return null;
     }
