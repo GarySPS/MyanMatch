@@ -5,11 +5,11 @@ import { useAuth } from "../context/AuthContext";
 const NAV_HEIGHT = 88; // px
 
 export default function Layout({ children }) {
-  const { loading } = useAuth();
+  const { loading, user, profile } = useAuth();
   const { pathname } = useLocation();
 
-  // Keep the loading fallback
-  if (loading) {
+  // CRITICAL FIX: Only show loading on initial app load, not when switching tabs
+  if (loading && !user && !profile) {
     return (
       <div
         className="min-h-dvh w-full"
@@ -23,7 +23,6 @@ export default function Layout({ children }) {
   const fullBleed = /^\/(?:HomePage|Profile|UserProfilePage|settings|me|profile)(?:\/.*)?$/i
     .test(pathname.replace(/\/+$/, ""));
 
-  // Avoid template literal parsing issues: build the string plainly
   const contentPadBottom = hideBottomNav
     ? "pb-[calc(env(safe-area-inset-bottom)+14px)]"
     : "pb-[calc(env(safe-area-inset-bottom)+" + NAV_HEIGHT + "px)]";
