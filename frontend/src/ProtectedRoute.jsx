@@ -14,6 +14,16 @@ export default function ProtectedRoute({ children }) {
     return () => setMounted(false);
   }, []);
 
+    // 🔍 ADD THIS DEBUG - RIGHT BEFORE YOUR DECISION LOGIC
+  console.log("🛡️ ProtectedRoute Debug:", {
+    path: location.pathname,
+    loading,
+    user: !!user,
+    profile: !!profile,
+    mounted,
+    onboardingComplete: profile?.onboarding_complete
+  });
+
   // --- Start of Debugging Logs ---
   console.log("--- ProtectedRoute ---");
   console.log("Path:", location.pathname);

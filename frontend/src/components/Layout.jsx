@@ -1,3 +1,4 @@
+//src>components>Layout.jsx
 import { useLocation } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import { useAuth } from "../context/AuthContext";
@@ -8,15 +9,17 @@ export default function Layout({ children }) {
   const { loading, user, profile } = useAuth();
   const { pathname } = useLocation();
 
-  // CRITICAL FIX: Only show loading on initial app load, not when switching tabs
-  if (loading && !user && !profile) {
-    return (
-      <div
-        className="min-h-dvh w-full"
-        style={{ background: "#82142d" }}
-      />
-    );
-  }
+  // FIXED: Show loading ONLY during initial app load
+if (loading) {
+  return (
+    <div
+      className="min-h-dvh w-full flex items-center justify-center"
+      style={{ background: "#82142d" }}
+    >
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+    </div>
+  );
+}
 
   const hideBottomNav = /^\/chat\/[^/]+$/i.test(pathname);
 

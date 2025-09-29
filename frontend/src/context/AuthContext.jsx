@@ -10,7 +10,17 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true); // For initial auth check ONLY
-  const [isRefreshing, setIsRefreshing] = useState(false); // [!ADD!] New state for refreshes
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // 🔍 ADD DEBUG EFFECT HERE - RIGHT AFTER YOUR STATES
+  useEffect(() => {
+    console.log("🔄 AuthContext State Update:", {
+      loading,
+      user: user ? `User(${user.email})` : null,
+      profile: profile ? `Profile(${profile.username})` : null,
+      session: session ? "Session(exists)" : null
+    });
+  }, [loading, user, profile, session]); // 👈 ADD THIS WHOLE USEEFFECT
 
   const fetchProfile = useCallback(async (user) => {
     if (!user) return null;
