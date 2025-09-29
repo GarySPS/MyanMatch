@@ -35,6 +35,7 @@ useEffect(() => {
     try {
       setLoading(true);
 
+      // 1) Seed state immediately on mount to avoid infinite "loading"
       const { data: sessionData, error: sessErr } = await supabase.auth.getSession();
       if (sessErr) console.error("getSession error:", sessErr);
 
@@ -81,46 +82,54 @@ useEffect(() => {
       setProfile(null);
       localStorage.removeItem("myanmatch_user");
     } finally {
-      if (mounted) setLoading(false);
+      if (mounted) setLoading(false); // IMPORTANT: ensure loading ends on first mount
     }
   }
 
   init();
 
-  // Listen for auth changes - BUT DON'T TOUCH LOADING STATE HERE
+  // 2) Keep listening for later auth changes
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setSession(session ?? null);
-      setUser(currentUser);
+      try {
+        const currentUser = session?.user ?? null;
+        setSession(session ?? null);
+        setUser(currentUser);
 
-      if (currentUser) {
-        const fetchedProfile = await fetchProfile(currentUser);
-        setProfile(fetchedProfile);
+        if (currentUser) {
+          const fetchedProfile = await fetchProfile(currentUser);
+          setProfile(fetchedProfile);
 
-        if (fetchedProfile) {
-          const cache = {
-            id: fetchedProfile.user_id,
-            user_id: fetchedProfile.user_id,
-            username: fetchedProfile.username,
-            first_name: fetchedProfile.first_name,
-            last_name: fetchedProfile.last_name,
-            avatar_url: fetchedProfile.avatar_url,
-            onboarding_complete: !!fetchedProfile.onboarding_complete,
-            is_admin: !!fetchedProfile.is_admin,
-            verified:
-              !!currentUser.email_confirmed_at ||
-              (currentUser.email && !currentUser.email.endsWith("@myanmatch.user")),
-          };
-          localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+          if (fetchedProfile) {
+            const cache = {
+              id: fetchedProfile.user_id,
+              user_id: fetchedProfile.user_id,
+              username: fetchedProfile.username,
+              first_name: fetchedProfile.first_name,
+              last_name: fetchedProfile.last_name,
+              avatar_url: fetchedProfile.avatar_url,
+              onboarding_complete: !!fetchedProfile.onboarding_complete,
+              is_admin: !!fetchedProfile.is_admin,
+              verified:
+                !!currentUser.email_confirmed_at ||
+                (currentUser.email && !currentUser.email.endsWith("@myanmatch.user")),
+            };
+            localStorage.setItem("myanmatch_user", JSON.stringify(cache));
+          } else {
+            localStorage.removeItem("myanmatch_user");
+          }
         } else {
+          setProfile(null);
           localStorage.removeItem("myanmatch_user");
         }
-      } else {
+      } catch (error) {
+        console.error("Critical error in AuthProvider (onAuthStateChange):", error);
+        setSession(null);
+        setUser(null);
         setProfile(null);
         localStorage.removeItem("myanmatch_user");
+      } finally {
       }
-      // REMOVED: setLoading(false) from here - this was causing the race condition
     }
   );
 

@@ -8,9 +8,13 @@ export default function OnboardingRoute({ children }) {
   const location = useLocation();
 
   if (loading) {
-    // Return null ONLY while the initial auth check is running.
-    return null;
-  }
+  // Show loading spinner instead of blank page
+  return (
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
 
   if (!user) {
     // If the user isn't logged in at all, send them to the sign-in page.
