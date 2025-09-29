@@ -1,3 +1,4 @@
+//src>pages>VerifyCodePage.jsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
