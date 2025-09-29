@@ -852,13 +852,6 @@ export default function HomePage() {
 
     fetchProfiles();
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchProfiles();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [myId]);
 
   /* ---------- early outs ---------- */
