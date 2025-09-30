@@ -13,7 +13,6 @@ import HomePage from "./pages/HomePage";
 import WelcomePage from "./pages/WelcomePage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import VerifyCodePage from "./pages/VerifyCodePage";
 import VerifyYourIdentityPage from "./pages/VerifyYourIdentityPage";
 import OnboardingTermsPage from "./pages/Onboarding/TermsPage";
 import LanguageOnboarding from "./pages/Onboarding/LanguageOnboarding";
@@ -71,7 +70,6 @@ const publicRoutes = [
   { path: "/", element: <WelcomePage /> },
   { path: "/SignInPage", element: <SignInPage /> },
   { path: "/SignUpPage", element: <SignUpPage /> },
-  { path: "/VerifyCodePage", element: <VerifyCodePage /> },
   { path: "/VerifyYourIdentityPage", element: <VerifyYourIdentityPage /> },
 ];
 

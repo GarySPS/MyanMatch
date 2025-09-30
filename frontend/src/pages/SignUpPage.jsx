@@ -60,70 +60,74 @@ export default function SignUpPage() {
   }
 
   async function handleUsernameSignUp(e) {
-    e.preventDefault();
-    setErr("");
+  e.preventDefault();
+  setErr("");
 
-    // --- Input validation (no changes here) ---
-    if (!username || username.trim().length < 3) {
-      const m = "Username must be at least 3 characters long.\nUsername သည် အနည်းဆုံး စာလုံး ၃ လုံးရှိရပါမည်။";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      const m = "Username can only contain letters, numbers, and underscores.\nUsername တွင် စာလုံးများ၊ နံပါတ်များနှင့် (_) သာ ပါဝင်နိုင်သည်။ ဥပမာ: aungaung25";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (!password || password.length < 6) {
-      const m = "Password must be at least 6 characters long.\nစကားဝှက်သည် အနည်းဆုံး စာလုံး ၆ လုံးရှိရပါမည်။";
-      setErr(m); showToast(m, "error"); return;
-    }
-    if (password !== confirm) {
-      const m = "Passwords do not match.\nစကားဝှက်များ မကိုက်ညီပါ။";
-      setErr(m); showToast(m, "error"); return;
-    }
+  // --- Input validation (no changes here) ---
+  if (!username || username.trim().length < 3) {
+    const m = "Username must be at least 3 characters long.\nUsername သည် အနည်းဆုံး စာလုံး ၃ လုံးရှိရပါမည်။";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    const m = "Username can only contain letters, numbers, and underscores.\nUsername တွင် စာလုံးများ၊ နံပါတ်များနှင့် (_) သာ ပါဝင်နိုင်သည်။ ဥပမာ: aungaung25";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (!password || password.length < 6) {
+    const m = "Password must be at least 6 characters long.\nစကားဝှက်သည် အနည်းဆုံး စာလုံး ၆ လုံးရှိရပါမည်။";
+    setErr(m); showToast(m, "error"); return;
+  }
+  if (password !== confirm) {
+    const m = "Passwords do not match.\nစကားဝှက်များ မကိုက်ညီပါ။";
+    setErr(m); showToast(m, "error"); return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const cleanUsername = username.toLowerCase().trim();
-    const dummyEmail = `${cleanUsername}@myanmatch.user`;
+  const cleanUsername = username.toLowerCase().trim();
+  const dummyEmail = `${cleanUsername}@myanmatch.user`;
 
-    try {
-      // Step 1: Create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: dummyEmail,
-        password: password,
-      });
+  try {
+    // Step 1: Create the user in Supabase Auth - DISABLE email confirmation
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: dummyEmail,
+      password: password,
+      options: {
+        // [!IMPORTANT CHANGE!] Disable email confirmation for dummy emails
+        data: {
+          username: username
+        }
+      }
+    });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Sign up failed to create a user.");
+    if (authError) throw authError;
+    if (!authData.user) throw new Error("Sign up failed to create a user.");
 
-      const userId = authData.user.id;
+    const userId = authData.user.id;
 
-      // Step 2: Create or update the user's profile in the 'profiles' table
-      // Using .upsert() prevents the "duplicate key" error if a profile already exists.
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
+    // Step 2: Create or update the user's profile in the 'profiles' table
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
 
-      if (profileError) {
-        // If this fails, it's a critical error.
-        throw new Error(`Profile creation/update failed: ${profileError.message}`);
-      }
+    if (profileError) {
+      throw new Error(`Profile creation/update failed: ${profileError.message}`);
+    }
 
-      // If both steps succeed, navigate to onboarding.
-      navigate("/onboarding/language");
+    // [!IMPORTANT CHANGE!] Navigate directly to onboarding - no verification needed
+    navigate("/onboarding/language");
 
-    } catch (error) {
-      console.error("Sign-up failed:", error.message);
-      if (error.message.includes("User already registered")) {
-        const m = "This username is already taken. Please choose another one.\nဤ Username ကို အသုံးပြုပြီးဖြစ်သည်။ အခြားတစ်ခုကို ရွေးပါ။";
-        setErr(m); showToast(m, "error");
-      } else {
-        setErr(error.message); showToast(error.message, "error");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+  } catch (error) {
+    console.error("Sign-up failed:", error.message);
+    if (error.message.includes("User already registered")) {
+      const m = "This username is already taken. Please choose another one.\nဤ Username ကို အသုံးပြုပြီးဖြစ်သည်။ အခြားတစ်ခုကို ရွေးပါ။";
+      setErr(m); showToast(m, "error");
+    } else {
+      setErr(error.message); showToast(error.message, "error");
+    }
+  } finally {
+    setLoading(false);
+  }
+}
 
   // [!ADD!] This prevents the sign-up form from flashing on screen for logged-in users before redirecting.
   if (authLoading || user) {
