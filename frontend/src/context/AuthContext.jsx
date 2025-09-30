@@ -21,52 +21,39 @@ export function AuthProvider({ children }) {
     });
   }, [loading, user, profile, session]);
 
- const fetchProfile = useCallback(async (user) => {
-    if (!user) {
-        console.log("fetchProfile: No user provided, returning null.");
-        return null;
+const fetchProfile = useCallback(async (user) => {
+  if (!user) {
+    console.log("fetchProfile: No user provided, returning null.");
+    return null;
+  }
+
+  try {
+    console.log(`fetchProfile (SIMPLE TEST): 🚀 Starting fetch for user ${user.id}...`);
+    
+    // [!CHANGE!] We are only selecting TWO simple columns to test the query.
+    const { data, error, status } = await supabase
+      .from("profiles")
+      .select("user_id, onboarding_complete") // <-- THE ONLY IMPORTANT CHANGE
+      .eq("user_id", user.id)
+      .single();
+
+    console.log(`fetchProfile (SIMPLE TEST): 🏁 Query finished with status: ${status}.`);
+
+    if (error && error.code !== 'PGRST116') {
+      console.error("fetchProfile (SIMPLE TEST): ❌ Supabase query error:", error);
+      throw error;
     }
 
-    // [!NEW!] Create an AbortController to add a timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => {
-        console.error("fetchProfile: 🚨 TIMEOUT! The database query took too long and was aborted.");
-        controller.abort();
-    }, 10000); // 10-second timeout
+    console.log("fetchProfile (SIMPLE TEST): ✅ Success. Received profile data:", data);
+    
+    // If the simple query works but returns partial data, we will need to
+    // fetch the full profile later. For now, this is enough for routing.
+    return data;
 
-    try {
-        console.log(`fetchProfile: 🚀 Starting fetch for user ${user.id}...`);
-        
-        const { data, error, status } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", user.id)
-            .abortSignal(controller.signal) // Pass the abort signal to the query
-            .single();
-
-        clearTimeout(timeout); // Clear the timeout if the query succeeds in time
-
-        console.log(`fetchProfile: 🏁 Query finished with status: ${status}.`);
-
-        // Ignore the AbortError we expect on timeout
-        if (error && error.name !== 'AbortError') { 
-            if (error.code !== 'PGRST116') {
-                console.error("fetchProfile: ❌ Supabase query error:", error);
-                throw error;
-            }
-        }
-
-        console.log("fetchProfile: ✅ Success. Received profile data:", data);
-        return data;
-
-    } catch (error) {
-        // Ignore the AbortError we expect on timeout
-        if (error.name !== 'AbortError') {
-           console.error("fetchProfile: 💥 CRITICAL ERROR in catch block:", error);
-        }
-        clearTimeout(timeout); // Always clear timeout in case of other errors
-        return null;
-    }
+  } catch (error) {
+    console.error("fetchProfile (SIMPLE TEST): 💥 CRITICAL ERROR in catch block:", error);
+    return null;
+  }
 }, []);
 
   useEffect(() => {
