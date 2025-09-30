@@ -21,22 +21,36 @@ export function AuthProvider({ children }) {
     });
   }, [loading, user, profile, session]);
 
-  const fetchProfile = useCallback(async (user) => {
-    if (!user) return null;
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    } catch (error) {
-      // THIS IS THE CRITICAL LOG WE NEED TO SEE
-      console.error("⛔️ DATABASE ERROR in fetchProfile:", error); 
-      return null;
+const fetchProfile = useCallback(async (user) => {
+    if (!user) {
+        console.log("fetchProfile: No user provided, returning null.");
+        return null;
     }
-  }, []);
+
+    try {
+        console.log(`fetchProfile: 🚀 Starting fetch for user ${user.id}...`);
+        
+        const { data, error, status } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", user.id)
+            .single();
+
+        console.log(`fetchProfile: 🏁 Query finished with status: ${status}.`);
+
+        if (error && error.code !== 'PGRST116') {
+            console.error("fetchProfile: ❌ Supabase query error:", error);
+            throw error;
+        }
+
+        console.log("fetchProfile: ✅ Success. Received profile data:", data);
+        return data;
+
+    } catch (error) {
+        console.error("fetchProfile: 💥 CRITICAL ERROR in catch block:", error);
+        return null;
+    }
+}, []);
 
   useEffect(() => {
     setLoading(true);
