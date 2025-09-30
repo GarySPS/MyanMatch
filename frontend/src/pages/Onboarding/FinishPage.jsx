@@ -93,7 +93,7 @@ export default function FinishPage() {
 
             // --- Step 3: Save Everything to Supabase ---
             const { error: dbErr } = await supabase
-                .from("profiles")
+                .from("user_profiles")
                 .update(finalPayload)
                 .eq("user_id", user.id);
 

@@ -21,43 +21,32 @@ export function AuthProvider({ children }) {
     });
   }, [loading, user, profile, session]);
 
-
 const fetchProfile = useCallback(async (user) => {
   if (!user) {
-    console.log("No user, skipping test.");
+    console.log("fetchProfile: No user provided, returning null.");
     return null;
   }
-
-  console.log(`--- 🧪 ISOLATION TEST START: Attempting to read from test_table ---`);
-
   try {
-    // We are trying to read from 'test_table' instead of 'profiles'
+    console.log(`fetchProfile: 🚀 Starting fetch for user ${user.id}...`);
+    
     const { data, error, status } = await supabase
-      .from('test_table')
-      .select('message')
-      .limit(1)
+      .from("user_profiles") // <-- We will use the NEW table name here
+      .select("*")
+      .eq("user_id", user.id)
       .single();
 
-    console.log(`--- ISOLATION TEST: Query finished with status: ${status} ---`);
+    console.log(`fetchProfile: 🏁 Query finished with status: ${status}.`);
 
-    if (error) {
-      // If there's an error, log it and fail the test.
-      console.error(`--- ❌ ISOLATION TEST FAILED: Supabase query error:`, error);
-      return null;
+    if (error && error.code !== 'PGRST116') {
+      console.error("fetchProfile: ❌ Supabase query error:", error);
+      throw error;
     }
 
-    console.log(`--- ✅ ISOLATION TEST SUCCESS! Data received:`, data);
-    
-    // If successful, we return a "fake" profile object just to make the app work.
-    // This will let us get past the loading screen.
-    return { 
-      user_id: user.id, 
-      onboarding_complete: false, // Ensures you go to onboarding
-      test_message: data.message 
-    };
+    console.log("fetchProfile: ✅ Success. Received profile data:", data);
+    return data;
 
   } catch (error) {
-    console.error("--- 💥 ISOLATION TEST FAILED: CRITICAL ERROR in catch block:", error);
+    console.error("fetchProfile: 💥 CRITICAL ERROR in catch block:", error);
     return null;
   }
 }, []);

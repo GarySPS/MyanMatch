@@ -106,7 +106,7 @@ export default function SignUpPage() {
 
     // Step 2: Create or update the user's profile in the 'profiles' table
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .upsert({ user_id: userId, username: username }, { onConflict: 'user_id' });
 
     if (profileError) {
