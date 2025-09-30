@@ -21,37 +21,43 @@ export function AuthProvider({ children }) {
     });
   }, [loading, user, profile, session]);
 
+
 const fetchProfile = useCallback(async (user) => {
   if (!user) {
-    console.log("fetchProfile: No user provided, returning null.");
+    console.log("No user, skipping test.");
     return null;
   }
 
+  console.log(`--- 🧪 ISOLATION TEST START: Attempting to read from test_table ---`);
+
   try {
-    console.log(`fetchProfile (SIMPLE TEST): 🚀 Starting fetch for user ${user.id}...`);
-    
-    // [!CHANGE!] We are only selecting TWO simple columns to test the query.
+    // We are trying to read from 'test_table' instead of 'profiles'
     const { data, error, status } = await supabase
-      .from("profiles")
-      .select("user_id, onboarding_complete") // <-- THE ONLY IMPORTANT CHANGE
-      .eq("user_id", user.id)
+      .from('test_table')
+      .select('message')
+      .limit(1)
       .single();
 
-    console.log(`fetchProfile (SIMPLE TEST): 🏁 Query finished with status: ${status}.`);
+    console.log(`--- ISOLATION TEST: Query finished with status: ${status} ---`);
 
-    if (error && error.code !== 'PGRST116') {
-      console.error("fetchProfile (SIMPLE TEST): ❌ Supabase query error:", error);
-      throw error;
+    if (error) {
+      // If there's an error, log it and fail the test.
+      console.error(`--- ❌ ISOLATION TEST FAILED: Supabase query error:`, error);
+      return null;
     }
 
-    console.log("fetchProfile (SIMPLE TEST): ✅ Success. Received profile data:", data);
+    console.log(`--- ✅ ISOLATION TEST SUCCESS! Data received:`, data);
     
-    // If the simple query works but returns partial data, we will need to
-    // fetch the full profile later. For now, this is enough for routing.
-    return data;
+    // If successful, we return a "fake" profile object just to make the app work.
+    // This will let us get past the loading screen.
+    return { 
+      user_id: user.id, 
+      onboarding_complete: false, // Ensures you go to onboarding
+      test_message: data.message 
+    };
 
   } catch (error) {
-    console.error("fetchProfile (SIMPLE TEST): 💥 CRITICAL ERROR in catch block:", error);
+    console.error("--- 💥 ISOLATION TEST FAILED: CRITICAL ERROR in catch block:", error);
     return null;
   }
 }, []);
